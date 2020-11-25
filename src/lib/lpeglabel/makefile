@@ -1,5 +1,5 @@
 LIBNAME = lpeglabel
-LUADIR = ../lua_src
+LUADIR = ../../lua_src
 
 COPT = -O2
 # COPT = -DLPEG_DEBUG -g

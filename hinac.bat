@@ -1,3 +1,3 @@
 @echo off
-call config.bat
-%LUA_CMD% src/hinac.lua %1 %2 %3
+call "%~dp0config.bat"
+%LUA_CMD% "%~dp0src/hinac.lua" %1 %2 %3 %4 %5 %6 %7

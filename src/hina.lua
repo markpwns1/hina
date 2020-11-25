@@ -9,6 +9,7 @@ local pg = require("lib.parser-gen.parser-gen")
 local Stack = require("stack")
 local tablex = require("lib.tablex")
 local stringx = require("lib.stringx")
+local set = require("lib.set")
 -- pg.usenodes(true)
 local indent = 0
 local depth = 0
@@ -601,7 +602,7 @@ local ast_traverse = {
         }
     end,
     continue_stmt = function(ast)
-        if ast[2].rule == "block_name" then
+        if ast[2] and ast[2].rule == "block_name" then
             
             local block_name = ast[2][2][1]
             local text = ""
@@ -655,7 +656,7 @@ local ast_traverse = {
         end
     end,
     break_stmt = function(ast)
-        if ast[2].rule == "block_name" then
+        if ast[2] and ast[2].rule == "block_name" then
             
             local block_name = ast[2][2][1]
             local text = ""
@@ -696,8 +697,12 @@ local ast_traverse = {
         else
             local text = ""
             local parent = scopes:peek(1)
+            local grandparent = scopes:peek(2)
             if parent and parent.type == "loop" then
                 text = text .. "__h_loop_" .. parent.id .. " = false"
+                text = newline(text)
+            elseif  grandparent and grandparent.type == "loop" then
+                text = text .. "__h_loop_" .. grandparent.id .. " = false"
                 text = newline(text)
             end
             return {
@@ -748,8 +753,12 @@ local ast_traverse = {
         else
             local text = ""
             local parent = scopes:peek(1)
+            local grandparent = scopes:peek(2)
             if parent and parent.type == "loop" then
                 text = text .. "__h_loop_" .. parent.id .. " = false"
+                text = newline(text)
+            elseif  grandparent and grandparent.type == "loop" then
+                text = text .. "__h_loop_" .. grandparent.id .. " = false"
                 text = newline(text)
             end
             
@@ -1243,7 +1252,7 @@ end
 -- io.close()
 
 -- print("Lua result:")
-local function translate(str)
+local function translate(str, include_entry)
     local ast, errors = pg.parse(str, grammar, printerror) 
 
     if errors then 
@@ -1258,27 +1267,31 @@ local function translate(str)
         error("Failed to parse. Maybe it's a syntax error, or maybe I'm a bad programmer.")
     end
 
+    if include_entry then
+    result.text = [[
+require('h_include')
+]] .. result.text
+    end
+
     result.text = [[
 local __h_filename = arg[0]
 local __h_slash = string.find(__h_filename, "/[^/]*$") or string.find(__h_filename, "\\[^\\]*$") or 0
 local __h_current_dir = string.sub(__h_filename, 1, __h_slash - 1)
 package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
 package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
-require('h_include')
-
 ]] .. result.text
 
     return result.text
 end
 
-local function translate_file(path)
+local function translate_file(path, include_entry)
     local file = io.open(path, "r")
     if file == nil then
         error("File does not exist: " .. path)
     end
     local code = file:read("*all")
     file:close()
-    local result = translate(code)
+    local result = translate(code, include_entry)
     return result
 end
 
@@ -1288,12 +1301,46 @@ local function get_folder(file)
     return folder
 end
 
-local function compile_file(path, out, copy_h_include)
+local function scandir(directory, args)
+    if not args then args = "" end
+    local i, t, popen = 0, {}, io.popen
+    local pfile = popen('dir "'..directory..'" /b ' .. args)
+    for filename in pfile:lines() do
+        i = i + 1
+        t[i] = filename
+    end
+    pfile:close()
+    return t
+end
+
+local function scan_for_dirs(directory)
+    return scandir(directory, "/ad")
+end
+
+local function scan_for_all(directory)
+    local all = set:new(scandir(directory))
+    local dirs = set:new(scan_for_dirs(directory))
+    local files = all:difference(dirs)
+    return dirs, files
+end
+
+local function recursive_scan(directory, d, f)
+    local dirs, files = scan_for_all(directory)
+    for _, v in dirs:ipairs() do
+        d(directory .. "/" .. v)
+        recursive_scan(directory .. "/" .. v, d, f)
+    end
+    for _, v in files:ipairs() do
+        f(directory .. "/" .. v)
+    end
+end
+
+local function compile_file(path, out, copy_h_include, include_entry)
     if not out then out = "out" end
     local lastIndexOfSlash = string.find(path, "/[^/]*$") or string.find(path, "\\[^\\]*$") or 0
     local lastIndexOfDot = string.find(path, ".[^.]*$") or (string.len(path) + 1)
     local filename = stringx.sub(path, lastIndexOfSlash + 1, lastIndexOfDot - 1)
-    local text = translate_file(path)
+    local text = translate_file(path, include_entry)
     os.execute("if not exist \"" .. out .. "\" mkdir \"" .. out .. "\"")
     local file = io.open(out .. "/" .. filename .. ".lua", "w")
     io.output(file)
@@ -1304,12 +1351,46 @@ local function compile_file(path, out, copy_h_include)
         os.execute("xcopy /y \"" .. get_folder(arg[0]) .. "/h_include\" \"" .. out .. "\" > nul")
     end
 
-    print("Compiled file.");
+    print("\"" .. path .. "\" -> \"" .. (out .. "/" .. filename .. ".lua") .. "\" successful.");
 end
+
+local function compile_dir(dir, entry, out)
+    if not entry then entry = "main.hina" end
+    if not out then out = "out" end
+
+    compile_file(dir .. "/" .. entry, out, true, true)
+
+    local function string_startswith(s, start)
+        return string.sub(s,1,string.len(start)) == start
+    end
+
+    -- in/a/b
+    -- out/a/b
+    local function equivalentOutDir(d)
+        -- if string_startswith(dir, d) then
+            return out .. string.sub(d, string.len(dir) + 1)
+        -- else 
+            -- return 
+        -- end
+    end
+
+    recursive_scan(dir, function (d) end,
+    function (f)
+        if f == (dir .. "/" .. entry) then return end
+        local out_dir = equivalentOutDir(f)
+        compile_file(f, get_folder(out_dir), false, false)
+    end)
+
+    print("Done.")
+end
+
+
+-- local lfs = require("lfs")
 
 return {
     translate = translate,
     translate_file = translate_file,
     compile_file = compile_file,
+    compile_dir = compile_dir,
     evaluate_ast = evaluate
 }

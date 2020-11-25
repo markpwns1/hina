@@ -7,9 +7,14 @@ package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
 local hina = require("hina")
 local argparse = require("lib.argparse")
 local parser = argparse("hinac", "Compile Hina code to Lua code.")
-parser:argument("input", "The Hina file to be compiled")
-parser:argument("output", "The folder in which to write the compiled Lua files"):default("out")
-parser:option("-c --copyhina", "Copies the Hina standard library"):args(0)
+parser:option("-d --directory", "The directory to be compiled"):args(1)
+parser:option("-e --entry", "The entry point of the Hina program"):args(1):default("main.hina")
+parser:option("-o --output", "The folder in which to write the compiled Lua files"):args(1):default("out")
+parser:option("--no-include", "Does not copy h_include, required for all Hina programs"):args(0)
 local args = parser:parse()
 -- show(args)
-hina.compile_file(args.input, args.output, args.copyhina)
+if args.directory then
+    hina.compile_dir(args.directory, args.entry, args.output)
+else 
+    hina.compile_file(args.entry, args.output, not args.no_headers, true)
+end
