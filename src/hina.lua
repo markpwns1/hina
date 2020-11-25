@@ -1282,14 +1282,14 @@ local function translate_file(path)
 end
 
 local function get_folder(file)
-    local lastIndexOfSlash = string.find(file, "/[^/]*$") or 0
+    local lastIndexOfSlash = string.find(file, "/[^/]*$") or string.find(file, "\\[^\\]*$") or 0
     local folder = stringx.sub(file, 0, lastIndexOfSlash - 1)
     return folder
 end
 
 local function compile_file(path, out, copy_h_include)
     if not out then out = "out" end
-    local lastIndexOfSlash = string.find(path, "/[^/]*$") or 0
+    local lastIndexOfSlash = string.find(path, "/[^/]*$") or string.find(path, "\\[^\\]*$") or 0
     local lastIndexOfDot = string.find(path, ".[^.]*$") or (string.len(path) + 1)
     local filename = stringx.sub(path, lastIndexOfSlash + 1, lastIndexOfDot - 1)
     local text = translate_file(path)
