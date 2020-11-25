@@ -1,0 +1,1 @@
+set LUA_CMD="D:\Program Files\LuaForWindows\bin64\lua54.exe"

@@ -4,6 +4,7 @@ luafilesystem-master
 *.bat
 !hina.bat
 !hinac.bat
+!config.bat
 *test*.hina
 src/test.lua
 src/out.lua
