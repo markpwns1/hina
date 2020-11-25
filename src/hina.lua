@@ -710,7 +710,8 @@ local ast_traverse = {
         if ast[1].rule == "block_name" then
             
             local block_name = ast[1][2][1]
-            local val = ternary(ast[3] == ".", nil, "nil", nil)
+            local val = ternary(ast[3] == ".", "nil", nil)
+            -- show(ast[3]);
             val = val or evaluate(ast[3])
             local text = ""
             local i = 0
@@ -1302,6 +1303,8 @@ local function compile_file(path, out, copy_h_include)
     if copy_h_include then 
         os.execute("xcopy /y \"" .. get_folder(arg[0]) .. "/h_include\" \"" .. out .. "\" > nul")
     end
+
+    print("Compiled file.");
 end
 
 return {
