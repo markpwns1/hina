@@ -21,7 +21,7 @@ let x = {
 };
 print(x); // prints 9
 
-// prints "nil" because nothing was returned
+// prints nothing because nothing was returned
 print({
     let a, b, c = 1, 2, 3;
 });
@@ -48,7 +48,7 @@ print({
 
 To return different things to different scopes, there exists a `return` keyword.
 ```rust
-// The following code prints 2 then 1
+// The following code prints B then A
 print({
     print({
         return [
@@ -104,6 +104,14 @@ while true {
     print(i);
     i = i + 1;
 }
+```
+There are also `for-in` loops and `from` loops, they work the same way with `break` and `continue`. The commas are optional too, like with `if` statements and `while` loops.
+```rust
+let x = [ 1, 2, 3 ];
+for i, v in ipairs(x), print(v);
+
+// by and with are optional
+from 1 -> 10 by 1 with i, print(i);
 ```
 
 ### Example 
