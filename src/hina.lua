@@ -204,7 +204,7 @@ local grammar = pg.compile([[
 
     not_op <- '!'* numeric_comparison
 
-    NUMCOMPOP <- '<' / '<=' / '>' / '>='
+    NUMCOMPOP <- '<=' / '>=' / '<' / '>'
     numeric_comparison <- add (NUMCOMPOP add)*
 
     ADDOP <- [+-]
