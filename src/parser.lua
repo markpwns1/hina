@@ -146,7 +146,7 @@ local function print_error(desc, line, col, sfail, trec)
 end
 
 local function parse(input, silent)
-    local ast, errors = pg.parse(input, grammar, ternary(silent, nil, print_error))
+    local ast, errors = pg.parse(input, grammar, print_error)
     return {
         ast = ast,
         errors = errors,

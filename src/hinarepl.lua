@@ -13,15 +13,20 @@ function quit()
 end
 
 print("Hina " .. hina.version .. " -- REPL")
+print("Call quit(); to exit")
 
 while running do
     io.write(">>> ")
     local input = io.read()
 
-    pcall(function ()
+    local status, err = pcall(function ()
         local translated = hina.translate_stmt(input)
         local code = load(translated)
         local success, result = pcall(code)
         print(result)
     end)
+
+    if not status then 
+        print(string_trim(err))
+    end
 end
