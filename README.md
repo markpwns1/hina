@@ -114,6 +114,28 @@ for i, v in ipairs(x), print(v);
 from 1 -> 10 by 1 with i, print(i);
 ```
 
+#### Classes
+Hina does not provide any syntactic sugar for classes. It does, however, export the variable `object` from the "Classic" library, which provides a simple abstraction over the metatable stuff that Lua requires in order to emulate classes. See the following file, `vec.hina`:
+```rust
+let vec = object:extend();
+
+vec.new = (x, y) :=> {
+    self.x, self.y = x, y;
+};
+
+vec.magnitude = () :=> math.sqrt(self.x ^ 2 + self.y ^ 2);
+
+vec.to_string = () :=> "(" .. self.x .. ", " .. self.y .. ")";
+
+=> vec;
+```
+`vec` can then be used from other files like this:
+```rust
+let vec = require("vec");
+let v = vec(1, 2);
+print(v); // prints (1, 2)
+```
+
 ### Example 
 A calculator using the "parser-gen" Lua library.
 ```rust
