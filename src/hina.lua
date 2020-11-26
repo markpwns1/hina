@@ -227,7 +227,8 @@ local grammar = pg.compile([[
     traverse <- '.' IDENTIFIER
     index <- '[' expr? ']'
     call <- '(' expr_list? ')'
-    index_call <- factor (index / call / traverse)*
+    selfcall <- ':' IDENTIFIER call
+    index_call <- factor (index / call / traverse / selfcall)*
 
     KEYWORDS <- 'break' / 'continue' / 'from' / 'by' / 'with' / 'while' / 'let' / 'return' / 'fn' / 'if' / 'else'
     IDREST <- [a-zA-Z_0-9]
@@ -240,7 +241,7 @@ local grammar = pg.compile([[
     STRING <- '"' { [^"\]* } '"'
     array <- '[' field_list? ']'
     table <- '{' table_values? '}'
-    func <- '(' arg_list? ')' '=>' ((expr / tuple / '.')?)
+    func <- '(' arg_list? ')' ':'? '=>' ((expr / tuple / '.')?)
     null <- 'nil'
 
     block_name <- '<' IDREST '>'
@@ -855,6 +856,18 @@ local ast_traverse = {
             elseif ast[i].rule == "traverse" then
                 text = text .. "." .. ast[i][2][1]
                 ends_with_call = false
+            elseif ast[i].rule == "selfcall" then
+                text = text .. ":" .. ast[i][2][1] .. "("
+                -- show(ast[i])
+                if ast[i][3][2] ~= ")" then 
+                    parse_field_list(ast[i][3][2], function (x)
+                        -- show(x)
+                        text = text .. evaluate(x).text .. ", "
+                    end) 
+                    text = text:sub(1, text:len() - 2)   
+                end
+                text = text .. ")"
+                ends_with_call = true
             else
                 error("wtf")
             end
@@ -1138,7 +1151,7 @@ local ast_traverse = {
         }
     end,
     func = function (ast)
-        local text = "function ("
+        local text = ""
         local args = ast[2]
         local offset = -1
         local vararg_name
@@ -1166,6 +1179,14 @@ local ast_traverse = {
             type = "func",
             depth = depth
         })
+
+        -- show(ast)
+        if ast[4 + offset] == ":" then
+            offset = offset + 1 
+            text = "function(self, " .. text
+        else 
+            text = "function(" .. text
+        end
         -- show(5 + offset)
         local val = ast[5 + offset]
         if val == "." then
@@ -1287,6 +1308,12 @@ local function translate(str, include_entry)
         error("Failed to parse. Maybe it's a syntax error, or maybe I'm a bad programmer.")
     end
 
+    if include_entry then
+        result.text = [[
+require('h_include')
+]] .. result.text
+    end
+
     result.text = [[
 local __h_filename = arg[0]
 local __h_slash = string.find(__h_filename, "/[^/]*$") or string.find(__h_filename, "\\[^\\]*$") or 0
@@ -1295,11 +1322,7 @@ package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
 package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
 ]] .. result.text
 
-    if include_entry then
-    result.text = [[
-require('h_include')
-]] .. result.text
-    end
+
 
     return result.text
 end
