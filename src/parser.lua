@@ -56,7 +56,7 @@ local grammar = pg.compile([[
     dec_list <- IDENTIFIER (',' IDENTIFIER)*
     var_dec <- 'let' dec_list ('=' expr_list^missingRightHandVarDec)?
 
-    fragment expr <- concat
+    expr <- concat
 
     CONCATOP <- '..'
     concat <- boolean_logic (CONCATOP boolean_logic)*
@@ -105,7 +105,7 @@ local grammar = pg.compile([[
     STRING <- '"' { [^"\]* } '"'
     array <- '[' field_list? ']'
     table <- '{' table_values? '}'
-    func <- '(' arg_list? ')' ':'? '=>' ((expr / tuple / '.')?)
+    func <- '(' arg_list? ')' ':'? '=>' (expr / tuple / '.')
     null <- 'nil'
 
     block_name <- '<' IDREST '>'

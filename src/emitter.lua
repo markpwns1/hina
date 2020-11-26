@@ -43,3 +43,11 @@ end
 function return_output(o)
     output = o
 end
+
+function capture(f)
+    local op = steal_output()
+    local result = f()
+    local text = steal_output()
+    return_output(op)
+    return text .. result
+end

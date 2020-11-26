@@ -1,0 +1,51 @@
+// from x -> y [by z] [with w], { };
+=> (ast) => {
+    let capture_eval = (v) => capture(() => {
+        let n = evaluate(v);
+        assert_type(n.h_type, "num");
+        => n.text;
+    });
+
+    let _from = capture_eval(ast[2]);
+    let _to = capture_eval(ast[4]);
+
+    let offset = 0;
+
+    let _by;
+    if ast[5] == "by" {
+        _by = capture_eval(ast[6]);
+        offset = 2;
+    };
+
+    let var_name;
+    if ast[5 + offset] == "with" {
+        var_name = ast[6 + offset][1];
+        offset = offset + 2;
+    };
+
+    offset = offset + (if ast[5 + offset] == ",", 1 else 0);
+    let id = get_scope_nest();
+
+    scopes:push({
+        type: "loop",
+        id: id,
+        depth: depth
+    });
+
+    let body = capture(() => evaluate(ast[5 + offset]).text);
+
+    scopes:pop();
+
+    let parent_block = get_parent_block();
+
+    emitln("__h_loop_" .. id .. " = true");
+    emit("for " .. (var_name || "_") .. " = " .. _from .. ", " .. _to);
+    if _by, emit(", " .. _by);
+    emitln(" do");
+    emitln("if not __h_loop_" .. id .. " then break end");
+    emitln(body);
+    check_return(parent_block);
+    emitln("end");
+
+    => void;
+};

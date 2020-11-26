@@ -18,24 +18,24 @@ local set = require("lib.set")
 
 local parse = require("parser")
 -- pg.usenodes(true)
-local depth = 0
-local scopes = Stack()
+depth = 0
+scopes = Stack()
 local return_commands = { }
 
-local void = { text = "", h_type = "void" };
+void = { text = "", h_type = "void" };
 
-local function get_scope_nest()
+function get_scope_nest()
     return scopes:len()
 end
 
-local evaluate
+evaluate = nil
 local function type_compatible(a, b)
     assert(a ~= nil, "Left type is null")
     assert(b ~= nil, "Right type is null")
     return a == "any" or b == "any" or a == b
 end
 
-local function assert_type(a, b)
+function assert_type(a, b)
     if not type_compatible(a, b) then
         error("Expected object of type " .. b .. " but got " .. a)
     end
@@ -145,7 +145,7 @@ local function parse_field_list(list, f, start)
     end
 end
 
-local function get_parent_block()
+function get_parent_block()
     local parent_block
     local i = 0
     while i < scopes:len() do
@@ -189,7 +189,7 @@ local function generate_unary_op(symbol, in_type, out_type, f)
     end
 end
 
-local function check_return(block_name)
+function check_return(block_name)
     if tablex.index_of(return_commands, block_name) ~= nil then
         -- show(return_commands)
         tablex.remove_value(return_commands, block_name)
@@ -629,18 +629,27 @@ local ast_traverse = {
             h_type = "any"
         }
     end,
-    for_loop = function (ast)
-        local from = evaluate(ast[2])
-        assert_type(from.h_type, "num")
+    --[[for_loop = function (ast)
+        local from = capture(function ()
+            local n = evaluate(ast[2])
+            assert_type(n.h_type, "num")
+            return n.text
+        end)
 
-        local to = evaluate(ast[4])
-        assert_type(to.h_type, "num")
+        local to = capture(function ()
+            local n = evaluate(ast[4])
+            assert_type(n.h_type, "num")
+            return n.text
+        end)
 
         local offset = 0
         local by
         if ast[5] == "by" then
-            by = evaluate(ast[6])
-            assert_type(by.h_type, "num")
+            by = capture(function () 
+                local n = evaluate(ast[6])
+                assert_type(n.h_type, "num")
+                return n.text
+            end)
             offset = 2
         end
 
@@ -659,21 +668,27 @@ local ast_traverse = {
             depth = depth
         })
 
-        local body = evaluate(ast[5 + offset])
+        local body = capture(function () return evaluate(ast[5 + offset]).text end)
 
         scopes:pop()
 
         local parent_block = get_parent_block()
 
-        emitln("for " .. ternary(var_name, var_name, "_") .. " = " .. from.text 
-            .. ", " .. to.text .. ternary(by, ", " .. by.text, "") .. " do")
+        emitln("__h_loop_" .. id .. " = true")
+        emit("for " .. ternary(var_name, var_name, "_") .. " = " .. from 
+            .. ", " .. to)
+        if by then
+            emit(", " .. by)
+        end
+        emitln(" do")
         emitln("if not __h_loop_" .. id .. " then break end")
-        emitln(body.text)
+        emitln(body)
         check_return(parent_block)
         emitln("end")
 
         return void
-    end,
+    end,]]
+    for_loop = require("ast.lua.forloop"),
     for_in_loop = function (ast)
         local collection = evaluate(ast[4])
         
@@ -760,6 +775,7 @@ local ast_traverse = {
         if ast[3 + offset].rule == "expr" then
             emit("return ")
         end
+        print(ast[3 + offset].rule)
 
         local if_true = evaluate(ast[3 + offset])
         assert_type(cond.h_type, "bool")
@@ -943,9 +959,12 @@ require('h_include')
     end
 
     text = [[
-local __h_filename = arg[0]
-local __h_slash = string.find(__h_filename, "/[^/]*$") or string.find(__h_filename, "\\[^\\]*$") or 0
-local __h_current_dir = string.sub(__h_filename, 1, __h_slash - 1)
+local function __h_dir(file)
+    local slash = string.find(file, "/[^/]*$") or string.find(file, "\\[^\\]*$") or 0
+    return string.sub(file, 1, slash - 1)
+end
+local __h_filename = __h_dir(arg[0]) .. "/" .. string.gsub(... or "dummy", "%.", "/")
+local __h_current_dir = __h_dir(__h_filename)
 package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
 package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
 ]] .. text
