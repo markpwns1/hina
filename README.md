@@ -125,7 +125,7 @@ vec.new = (x, y) :=> {
 
 vec.magnitude = () :=> math.sqrt(self.x ^ 2 + self.y ^ 2);
 
-vec.to_string = () :=> "(" .. self.x .. ", " .. self.y .. ")";
+vec.__tostring = () :=> "(" .. self.x .. ", " .. self.y .. ")";
 
 => vec;
 ```
