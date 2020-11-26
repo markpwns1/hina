@@ -3,303 +3,29 @@
 --     oldRequire("src." .. p)
 -- end
 -- -- local x = require("lpeglabel")
-inspect = require("lib.inspect")
+require("util")
 
 local HINA_VERSION = "pre-0.1.1"
 
 local pg = require("lib.parser-gen.parser-gen")
+
+require("emitter")
+
 local Stack = require("stack")
 local tablex = require("lib.tablex")
 local stringx = require("lib.stringx")
 local set = require("lib.set")
+
+local parse = require("parser")
 -- pg.usenodes(true)
-local indent = 0
 local depth = 0
 local scopes = Stack()
 local return_commands = { }
 
-local function newline(txt)
-    txt = txt .. "\n"
-    for i = 1, indent do
-        txt = txt .. "  "
-    end
-    return txt
-end
-
-local function new_indent(txt)
-    indent = indent + 1
-    txt = newline(txt)
-    return txt
-end
-
-local function end_indent(txt)
-    indent = indent - 1
-    txt = newline(txt)
-    return txt
-end
+local void = { text = "", h_type = "void" };
 
 local function get_scope_nest()
     return scopes:len()
-end
-
-local error_labels = {
-    missingCommaArray = "Missing comma to separate array values",
-    missingRightHandVarDec = "Missing one or more values to assign",
-    missingTableComma = "Missing comma to separate table values",
-    missingCondition = "Missing a boolean condition",
-    missingBody = "Missing body",
-    missingIdentifier = "Missing an identifier (a name)",
-    missingCommaGeneric = "Missing comma",
-    missingDecList = "Missing one or more variable names",
-    missingTupleVal = "Missing one or more values",
-    missingExpr = "Missing expression",
-    missingReturns = "Missing one or more values to return",
-    missingNo = "Missing numeric value",
-    missingThinArrow = "Missing '->'",
-    missingLeftAssigments = "Missing one or more left-hand values to assign to",
-    missingOpenSquare = "Missing '['",
-    missingCloseSquare = "Missing ']'",
-    missingReturn = "Missing one or more return statements",
-    missingEquals = "Missing '='",
-    missingOpenBracket = "Missing '('",
-    missingCloseBracket = "Missing ')'",
-    missingOpenCurly = "Missing '{'",
-    missingCloseCurly = "Missing '}'",
-    missingFnArrow = "Missing '=>' to indicate function",
-    missingRetArrow = "Missing '=>' to indicate a return",
-    missingOperator = "Missing operator",
-    missingQuote = "Missing closing quote",
-    missingLT = "Missing '<'",
-    missingGT = "Missing '>'",
-    missingReturnKwd = "Missing keyword 'return'",
-    missingColon = "Missing ':'",
-    missingFrom = "Missing 'from'",
-    missingBy = "Missing 'by",
-    missingWith = "Missing 'with'",
-    missingSemicolon = "Missing ';'"
-}
-
-pg.setlabels(error_labels)
-
-local function string_trim(s)
-    return (s:gsub("^%s*(.-)%s*$", "%1"))
-end
-
-local errs = 0
-local errtext = ""
-local function printerror(desc,line,col,sfail,trec)
-    errs = errs+1
-    
-	errtext = errtext .. (errs..". "..desc.." at '"..string_trim(sfail).."' -- ln "..line.." col "..col .. "\n")
-end
-
---if_stmt <- 'if' expr comma expr ('else' expr)?
--- local grammar = pg.compile([[
---     program <- stmt+
---     stmt <- (for_loop / continue_stmt / break_stmt / while_loop / assignment / multi_ret / var_dec / ret / expr) ';'?
-
---     for_loop <- 'from' expr^missingExpr '->'^missingThinArrow expr^missingExpr ('by'^missingBy expr^missingExpr)? ('with'^missingWith IDENTIFIER^missingIdentifier)? comma stmt
---     continue_stmt <- 'continue' block_name?
---     break_stmt <- 'break' block_name?
---     while_loop <- 'while' expr^missingCondition comma stmt^missingBody
---     tuple <- '('^missingOpenBracket expr (','^missingCommaGeneric expr)+ ')'^missingCloseBracket
---     ret <- (block_name)? '=>' ((expr / tuple / '.')?)
---     multi_ret <- 'return'^missingReturnKwd '['^missingOpenSquare ret (','^missingCommaGeneric ret)* ']'^missingCloseSquare
---     assignment <- assign_list '='^missingEquals expr_list
-
---     dec_list <- IDENTIFIER (',' IDENTIFIER)*
---     var_dec <- 'let' dec_list ('='^missingEquals expr_list)?
-
---     fragment expr <- concat
-
---     CONCATOP <- '..'
---     concat <- boolean_logic (CONCATOP boolean_logic)*
-
---     BOOLOP <- '||' / '&&'
---     boolean_logic <- equality (BOOLOP equality)*
-
---     EQOP <- '==' / '!='
---     equality <- not_op (EQOP not_op)*
-
---     not_op <- '!'* numeric_comparison
-
---     NUMCOMPOP <- '<' / '<=' / '>' / '>='
---     numeric_comparison <- add (NUMCOMPOP add)*
-
---     ADDOP <- [+-]
---     add <- mul (ADDOP mul)*
---     MULOP <- [*/%]
---     mul <- neg (MULOP neg)*
---     neg <- '-'* bitshift
-
---     BITSHIFTOP <- '<<' / '>>'
---     bitshift <- bin_op (BITSHIFTOP bin_op)*
-
---     BITOP <- '&' / '|' / '~'
---     bin_op <- bin_not (BITOP bin_not)*
-
---     bin_not <- '~'* index_call
-
---     traverse <- '.' IDENTIFIER^missingIdentifier
---     index <- '[' expr? ']'^missingCloseSquare
---     call <- '(' expr_list? ')'^missingCloseBracket
---     index_call <- factor (index / call / traverse)*
-
---     KEYWORDS <- 'from' / 'by' / 'with' / 'while' / 'let' / 'return' / 'fn' / 'if' / 'else'
---     IDREST <- [a-zA-Z_0-9]
---     RESERVED <- KEYWORDS !IDREST
---     IDENTIFIER <- !RESERVED [a-zA-Z_] [a-zA-Z0-9_]*
-
---     NUMBER <- [0-9]+ ('.' [0-9]+)?
---     boolean <- 'true' / 'false'
---     brackets <- '(' expr ')'^missingCloseBracket
---     STRING <- '"' { [^"\]* } '"'^missingQuote
---     array <- '[' field_list? ']'^missingCloseSquare
---     table <- '<{' table_values? '}>'^missingCloseCurly
---     func <- '(' arg_list? ')'^missingCloseBracket '=>'^missingFnArrow ((expr / tuple / '.')?)^missingExpr
---     null <- 'nil'
-
---     block_name <- '<'^missingLT IDREST '>'^missingGT
---     block <- block_name '{' program '}'^missingCloseCurly
---     fragment comma <- ','?
---     if_expr <- 'if' expr^missingCondition comma expr^missingBody ('else' expr^missingBody)?
-
---     factor <- if_expr / func / brackets / NUMBER / boolean / null / IDENTIFIER / STRING / array / block / table
-
---     assign_list <- index_call (',' index_call)*
---     arg_list <- IDENTIFIER (',' IDENTIFIER !'...')* (',' IDENTIFIER '...')?
---     expr_list <- expr (',' expr)*
---     field_list <- expr (',' expr)* ','?
---     table_val <- IDENTIFIER^missingIdentifier ':'^missingColon expr^missingExpr
---     table_values <- table_val (',' table_val)* ','?
-
---     HELPER <- ';' / %nl / %s / KEYWORDS / !.
--- 	SYNC <- (!HELPER .)*
--- ]])
-
-local grammar = pg.compile([[
-    program <- (stmt ';'^missingSemicolon)+
-    stmt <- (for_in_loop / for_loop / continue_stmt / break_stmt / while_loop / assignment / multi_ret / var_dec / ret / expr)
-
-    for_in_loop <- 'for' ident_list 'in' expr comma stmt
-    for_loop <- 'from' expr '->' expr ('by' expr)? ('with' IDENTIFIER)? comma stmt
-    continue_stmt <- 'continue' block_name?
-    break_stmt <- 'break' block_name?
-    while_loop <- 'while' expr comma stmt
-    tuple <- '(' expr (',' expr)+ ')'
-    ret <- (block_name)? '=>' ((expr / tuple / '.')?)
-    multi_ret <- 'return' '[' ret (',' ret)* ']'
-    assignment <- assign_list '=' expr_list^missingRightHandVarDec
-
-    dec_list <- IDENTIFIER (',' IDENTIFIER)*
-    var_dec <- 'let' dec_list ('=' expr_list^missingRightHandVarDec)?
-
-    fragment expr <- concat
-
-    CONCATOP <- '..'
-    concat <- boolean_logic (CONCATOP boolean_logic)*
-
-    BOOLOP <- '||' / '&&'
-    boolean_logic <- equality (BOOLOP equality)*
-
-    EQOP <- '==' / '!='
-    equality <- not_op (EQOP not_op)*
-
-    not_op <- '!'* numeric_comparison
-
-    NUMCOMPOP <- '<=' / '>=' / '<' / '>'
-    numeric_comparison <- add (NUMCOMPOP add)*
-
-    ADDOP <- [+-]
-    add <- mul (ADDOP mul)*
-    MULOP <- [*/%]
-    mul <- neg (MULOP neg)*
-    neg <- '-'* bitshift
-
-    BITSHIFTOP <- '<<' / '>>'
-    bitshift <- bin_op (BITSHIFTOP bin_op)*
-
-    BITOP <- '&' / '|' / '~'
-    bin_op <- bin_not (BITOP bin_not)*
-
-    bin_not <- '~'* index_call
-
-    traverse <- '.' IDENTIFIER
-    index <- '[' expr? ']'
-    call <- '(' expr_list? ')'
-    selfcall <- ':' IDENTIFIER call
-    index_call <- factor (index / call / traverse / selfcall)*
-
-    KEYWORDS <- 'break' / 'continue' / 'from' / 'by' / 'with' / 'while' / 'let' / 'return' / 'fn' / 'if' / 'else'
-    IDREST <- [a-zA-Z_0-9]
-    RESERVED <- KEYWORDS !IDREST
-    IDENTIFIER <- !RESERVED [a-zA-Z_] [a-zA-Z0-9_]*
-
-    NUMBER <- [0-9]+ ('.' [0-9]+)?
-    boolean <- 'true' / 'false'
-    brackets <- '(' expr ')'
-    STRING <- '"' { [^"\]* } '"'
-    array <- '[' field_list? ']'
-    table <- '{' table_values? '}'
-    func <- '(' arg_list? ')' ':'? '=>' ((expr / tuple / '.')?)
-    null <- 'nil'
-
-    block_name <- '<' IDREST '>'
-    block <- block_name? '{' program '}'
-    fragment comma <- ','?
-    if_expr <- 'if' expr comma (expr / stmt) ('else' (expr / stmt))?
-
-    factor <- if_expr / func / brackets / NUMBER / boolean / null / IDENTIFIER / STRING / array / block / table
-
-    ident_list <- IDENTIFIER (',' IDENTIFIER)*
-    assign_list <- index_call (',' index_call)*
-    arg_list <- IDENTIFIER (',' IDENTIFIER !'...')* (',' IDENTIFIER '...')?
-    expr_list <- expr (',' expr)*
-    field_list <- expr (',' expr)* ','?
-    table_val <- IDENTIFIER ':' expr
-    table_values <- table_val (',' table_val)* ','?
-
-    fragment COMMENT <- '//' (. !%nl)* .
-    fragment MULTILINE_COMMENT <- '/*' (. !'*/')* . '*/'
-    HELPER <- ';' / %nl / %s / KEYWORDS / !.
-    SYNC <- (!HELPER .)*
-    SKIP <- %s / %nl / COMMENT / MULTILINE_COMMENT
-]])
-
---[[
-    let add = (x, y) => 5
-]]
-
--- STRCHAR <- ('\\' .) / (. & (!'"'))
--- local res, _ = pg.parse([[
-
---     !(-x % -2 + (~~1 | 0 << 2) == 2) && a || b
-
--- ]], grammar)
-
-
-function show(x)
-    print(inspect(x))
-end
-
--- local file = io.open(arg[1], "r")
--- local code = file:read("*all")
--- file:close()
-
--- local res, errors
--- if not pcall(function() 
---     res, errors = pg.parse(code, grammar, printerror) 
--- end) then
---     error("Unspecified syntax error")
--- end
--- res, errors = pg.parse(code, grammar, printerror) 
-
-
--- show(errors)
-
-local output = ""
-local function emit(x)
-    output = output .. x
 end
 
 local evaluate
@@ -313,11 +39,6 @@ local function assert_type(a, b)
     if not type_compatible(a, b) then
         error("Expected object of type " .. b .. " but got " .. a)
     end
-end
-
-
-local function ternary(cond, t, f)
-    if cond then return t else return f end
 end
 
 local function table_contains(t, f)
@@ -468,91 +189,70 @@ local function generate_unary_op(symbol, in_type, out_type, f)
     end
 end
 
-local function check_return(text, block_name)
+local function check_return(block_name)
     if tablex.index_of(return_commands, block_name) ~= nil then
         -- show(return_commands)
         tablex.remove_value(return_commands, block_name)
         -- show(return_commands)
-        text = newline(text)
-        text = text .. "if __h_return_value_" .. block_name .. " then"
-        text = new_indent(text)
-        text = text .. "local __h_temp = __h_return_value_" .. block_name
-        text = newline(text)
-        text = text .. "__h_return_value_" .. block_name .. " = nil"
-        text = newline(text)
-        text = text .. "return __h_unpack(__h_temp)"
-        text = end_indent(text)
-        text = text .. "end"
+        emitln("if __h_return_value_" .. block_name .. " then")
+        raise_indent()
+        emitln("local __h_temp = __h_return_value_" .. block_name)
+        emitln("__h_return_value_" .. block_name .. " = nil")
+        emitln("return __h_unpack(__h_temp)")
+        lower_indent()
+        emitln("end")
     end
-    return text
 end
 
 local unbox_ast = generate_unboxer(1)
 
 local ast_traverse = {
     program = function(ast)
-        local text = ""
         local pc = 1
         while ast[pc] do
             if ast[pc] ~= ";" then
-                text = text .. evaluate(ast[pc]).text .. ";"
-                text = newline(text)
+                emit(string_trim(evaluate(ast[pc]).text) .. ";\n")
             end
             pc = pc + 1
         end
-        return {
-            text = text,
-            h_type = "void"
-        }
+        return void
     end,
-    comment = function (ast)
-        return { text = "", h_type = "void" }
-    end,
+    comment = function (ast) return void end,
     stmt = function(ast)
-        -- print("BEHOLD")
-        -- show(ast)
         -- if ast[1].rule == "expr" and ast[1][1] and ast[1][1] then
         --     error("Expression used as statement")  
         -- end
         return unbox_ast(ast)
     end,
     assignment = function (ast)
-        local text = ""
         parse_field_list(ast[1], function (x)
             local eva = evaluate(x)
             if eva.ends_with_call then
                 error("Cannot assign directly to the result of a function")
             end
-            text = text .. eva.text .. ", "
+            emit(eva.text .. ", ")
         end)
-        text = text:sub(1, text:len() - 2) 
+        remove_comma()
 
-        text = text .. " = "
+        emit(" = ")
 
         parse_field_list(ast[3], function (x)
-            text = text .. evaluate(x).text .. ", "
+            emit(evaluate(x).text .. ", ")
         end)
-        text = text:sub(1, text:len() - 2) 
+        remove_comma()
 
-        return {
-            text = text,
-            h_type = "void"
-        }
+        return void
     end,
     tuple = function (ast)
         -- show(ast)
-        local text = ""
         local i = 2
         while ast[i] do 
-            text = text .. evaluate(ast[i]).text .. ternary(ast[i + 2], ", ", "")
+            emit(evaluate(ast[i]).text .. ternary(ast[i + 2], ", ", ""))
             i = i + 2
         end
-        return {
-            text = text .. ""
-        }
+        return void
     end,
     multi_ret = function (ast)
-        local text = ""
         local i = 3
 
         -- TODO: make sure you cant include scopes twice
@@ -587,8 +287,7 @@ local ast_traverse = {
             local val = { text = "nil" }
             if v and v ~= "." then val = evaluate(v) end
             table.insert(return_commands, scope_name)
-            text = text .. "__h_return_value_" .. scope_name .. " = __h_pack(" .. val.text .. ")"
-            text = newline(text)
+            emitln("__h_return_value_" .. scope_name .. " = __h_pack(" .. val.text .. ")")
         end
 
         l()
@@ -598,17 +297,13 @@ local ast_traverse = {
             i = i + 2
         end
 
-        text = text .. "do return __h_unpack(__h_return_value_" .. scopes:peek().name .. ") end"
-        return {
-            text = text,
-            h_type = "void"
-        }
+        emitln("do return __h_unpack(__h_return_value_" .. scopes:peek().name .. ") end")
+        return void
     end,
     continue_stmt = function(ast)
         if ast[2] and ast[2].rule == "block_name" then
             
             local block_name = ast[2][2][1]
-            local text = ""
             local i = 0
             while i < scopes:len() do
                 local s = scopes:peek(i)
@@ -620,8 +315,7 @@ local ast_traverse = {
                 
                 if s.type == "block" then 
                     table.insert(return_commands, s.name)
-                    text = text .. "__h_return_value_" .. s.name .. " = __h_pack(nil)"
-                    text = newline(text)
+                    emitln("__h_return_value_" .. s.name .. " = __h_pack(nil)")
                     
                     if s.name == block_name then 
                         local parent = scopes:peek(i + 1)
@@ -634,35 +328,25 @@ local ast_traverse = {
                         break 
                     end
                 elseif s.type == "loop" then 
-                    text = text .. "__h_loop_" .. s.id .. " = false"
-                    text = newline(text)
+                    emitln("__h_loop_" .. s.id .. " = false")
                 end
                 i = i + 1
             end
 
-            text = text .. "do return __h_unpack(__h_return_value_" .. block_name .. ") end"
-            return {
-                text = text,
-                h_type = "void"
-            }
+            emitln("do return __h_unpack(__h_return_value_" .. block_name .. ") end")
+            return void
         else
-            local text = ""
             local parent = scopes:peek(1)
             if parent and parent.type == "loop" then
-                text = text .. "__h_loop_" .. parent.id .. " = false"
-                text = newline(text)
+                emitln("__h_loop_" .. parent.id .. " = false")
             end
-            return {
-                text = text .. "do return end",
-                h_type = "void"
-            }
+            emitln("do return end")
+            return void
         end
     end,
     break_stmt = function(ast)
         if ast[2] and ast[2].rule == "block_name" then
-            
             local block_name = ast[2][2][1]
-            local text = ""
             local i = 0
             while i < scopes:len() do
                 local s = scopes:peek(i)
@@ -674,44 +358,33 @@ local ast_traverse = {
                 
                 if s.type == "block" then 
                     table.insert(return_commands, s.name)
-                    text = text .. "__h_return_value_" .. s.name .. " = __h_pack(nil)"
-                    text = newline(text)
+                    emitln("__h_return_value_" .. s.name .. " = __h_pack(nil)")
                     
                     if s.name == block_name then 
                         local parent = scopes:peek(i + 1)
                         if parent and parent.type == "loop" then
-                            text = text .. "__h_loop_" .. parent.id .. " = false"
-                            text = newline(text)
+                            emitln("__h_loop_" .. parent.id .. " = false")
                         end
                         break 
                     end
                 elseif s.type == "loop" then 
-                    text = text .. "__h_loop_" .. s.id .. " = false"
-                    text = newline(text)
+                    emitln("__h_loop_" .. s.id .. " = false")
                 end
                 i = i + 1
             end
 
-            text = text .. "do return __h_unpack(__h_return_value_" .. block_name .. ") end"
-            return {
-                text = text,
-                h_type = "void"
-            }
+            emitln("do return __h_unpack(__h_return_value_" .. block_name .. ") end")
+            return void
         else
-            local text = ""
             local parent = scopes:peek(1)
             local grandparent = scopes:peek(2)
             if parent and parent.type == "loop" then
-                text = text .. "__h_loop_" .. parent.id .. " = false"
-                text = newline(text)
+                emitln("__h_loop_" .. parent.id .. " = false")
             elseif  grandparent and grandparent.type == "loop" then
-                text = text .. "__h_loop_" .. grandparent.id .. " = false"
-                text = newline(text)
+                emitln("__h_loop_" .. grandparent.id .. " = false")
             end
-            return {
-                text = text .. "do return end",
-                h_type = "void"
-            }
+            emitln("do return end")
+            return void
         end
     end,
     ret = function (ast)
@@ -721,7 +394,6 @@ local ast_traverse = {
             local val = ternary(ast[3] == ".", "nil", nil)
             -- show(ast[3]);
             val = val or evaluate(ast[3])
-            local text = ""
             local i = 0
             while i < scopes:len() do
                 local s = scopes:peek(i)
@@ -730,71 +402,57 @@ local ast_traverse = {
                 end
                 if s.type == "block" then 
                     table.insert(return_commands, s.name)
-                    text = text .. "__h_return_value_" .. s.name .. " = __h_pack(" .. ((val and val.text) or "nil") .. ")"
-                    text = newline(text)
+                    emitln("__h_return_value_" .. s.name .. " = __h_pack(" .. ((val and val.text) or "nil") .. ")")
 
                     if s.name == block_name then 
                         local parent = scopes:peek(i + 1)
                         if parent and parent.type == "loop" then
-                            text = text .. "__h_loop_" .. parent.id .. " = false"
-                            text = newline(text)
+                            emitln("__h_loop_" .. parent.id .. " = false")
                         end
                         break 
                     end
                 elseif s.type == "loop" then 
-                    text = text .. "__h_loop_" .. s.id .. " = false"
-                    text = newline(text)
+                    emitln("__h_loop_" .. s.id .. " = false")
                 end
                 i = i + 1
             end
 
-            text = text .. "do return __h_unpack(__h_return_value_" .. block_name .. ") end"
-            return {
-                text = text,
-                h_type = "void"
-            }
+            emitln("do return __h_unpack(__h_return_value_" .. block_name .. ") end")
+            return void
         else
-            local text = ""
             local parent = scopes:peek(1)
             local grandparent = scopes:peek(2)
             if parent and parent.type == "loop" then
-                text = text .. "__h_loop_" .. parent.id .. " = false"
-                text = newline(text)
+                emitln("__h_loop_" .. parent.id .. " = false")
             elseif  grandparent and grandparent.type == "loop" then
-                text = text .. "__h_loop_" .. grandparent.id .. " = false"
-                text = newline(text)
+                emitln("__h_loop_" .. grandparent.id .. " = false")
             end
             
             local val = ternary(ast[2] == ".", "nil", nil)
             if ast[2] then
                 val = val or evaluate(ast[2])
             end
-            return {
-                text = text .. "do return " .. ((val and val.text) or "nil") .. " end",
-                h_type = "void"
-            }
+            emitln("do return " .. ((val and val.text) or "nil") .. " end")
+            return void
         end
     end,
     var_dec = function (ast)
         -- show(ast)
         local names = ast[2]
-        local text = "local "
+        emit("local ")
         local i = 1
         while names[i] do
-            text = text .. names[i][1] .. ternary(names[i + 2], ", ", "")
+            emit(names[i][1] .. ternary(names[i + 2], ", ", ""))
             i = i + 2
         end
         if ast[3] then
-            text = text .. " = "
+            emit(" = ")
             parse_field_list(ast[4], function (x)
-                text = text .. evaluate(x).text .. ", "
+                emit(evaluate(x).text .. ", ")
             end)
-            text = text:sub(1, text:len() - 2) 
+            remove_comma()
         end
-        return {
-            text = text,
-            h_type = "void"
-        }
+        return void
     end,
     expr = unbox_ast,
     concat = generate_binop("any", "any", "string"),
@@ -819,6 +477,7 @@ local ast_traverse = {
     neg = generate_unary_op("-", "num", "num", function(text)
         return "-" .. text
     end),
+    exp = generate_binop("num", "num", "num"),
     bin_not = generate_unary_op("~", "num", "num", function(text)
         return "~" .. text
     end),
@@ -913,8 +572,9 @@ local ast_traverse = {
         }
     end,
     block = function (ast)
-        local text = "(function()"
-        text = new_indent(text)
+        local op = steal_output()
+        emitln("(function()")
+        raise_indent()
 
         local pc = 1
         depth = depth + 1
@@ -944,12 +604,12 @@ local ast_traverse = {
         })
 
         while statements[pc] do
-            text = text .. evaluate(statements[pc]).text .. ";"
+            emit(string_trim(evaluate(statements[pc]).text) .. ";")
 
-            text = check_return(text, block_name)
+            check_return(block_name)
 
             if statements[pc + 1] then
-                text = newline(text)
+                emitln()
             end
 
             pc = pc + 2
@@ -958,10 +618,12 @@ local ast_traverse = {
         scopes:pop()
         depth = depth - 1
 
-        text = newline(text)
-        text = text .. block_annotation
-        text = end_indent(text)
-        text = text .. "end)()"
+        emitln(block_annotation)
+        lower_indent()
+        emitln("end)()")
+
+        local text = steal_output()
+        return_output(op)
         return {
             text = text,
             h_type = "any"
@@ -1003,24 +665,16 @@ local ast_traverse = {
 
         local parent_block = get_parent_block()
 
-        local text = "for " .. ternary(var_name, var_name, "_") .. " = " .. from.text 
-            .. ", " .. to.text .. ternary(by, ", " .. by.text, "") .. " do"
-        text = new_indent(text)
-        text = text .. "if not __h_loop_" .. id .. " then break end"
-        text = newline(text)
-        text = text .. body.text
-        text = newline(text)
-        text = check_return(text, parent_block)
-        text = end_indent(text)
-        text = text .. "end"
+        emitln("for " .. ternary(var_name, var_name, "_") .. " = " .. from.text 
+            .. ", " .. to.text .. ternary(by, ", " .. by.text, "") .. " do")
+        emitln("if not __h_loop_" .. id .. " then break end")
+        emitln(body.text)
+        check_return(parent_block)
+        emitln("end")
 
-        return {
-            text = text,
-            h_type = "void",
-        }
+        return void
     end,
     for_in_loop = function (ast)
-        local text = ""
         local collection = evaluate(ast[4])
         
         local id = get_scope_nest() 
@@ -1036,66 +690,66 @@ local ast_traverse = {
         
         local parent_block = get_parent_block()
 
-        text = text .. "local __h_loop_" .. id .. " = true"
-        text = newline(text)
-        text = text .. "for "
+        emitln("local __h_loop_" .. id .. " = true")
+        emit("for ")
 
         parse_field_list(ast[2], function (x)
-            text = text .. x[1] .. ", "
+            emit(x[1] .. ", ")
         end)
 
-        text = text:sub(1, text:len() - 2) 
+        remove_comma()
         
-        text = text .. " in " .. collection.text .. " do"
-        text = new_indent(text)
-        text = text .. "if not __h_loop_" .. id .. " then break end"
-        text = newline(text)
-        text = text .. body.text
-        text = newline(text)
-        text = check_return(text, parent_block)
-        text = end_indent(text)
-        text = text .. "end"
-        return {
-            text = text,
-            h_type = "void"
-        }
+        emit(" in " .. collection.text .. " do")
+        raise_indent()
+        emitln("if not __h_loop_" .. id .. " then break end")
+        emitln(body.text)
+        check_return(parent_block)
+        lower_indent()
+        emitln("end")
+
+        return void
     end,
     while_loop = function (ast)
-        local cond = evaluate(ast[2])
-        assert_type(cond.h_type, "bool")
 
         local offset = ternary(ast[3] == ",", 1, 0)
         local id = get_scope_nest() 
+
+        local parent_block = get_parent_block()
+
+        emitln("local __h_loop_" .. id .. " = true")
+        emit("while __h_loop_" .. id .. " and (")
+        local cond = evaluate(ast[2])
+        assert_type(cond.h_type, "bool")
+        emit(cond.text)
+        emitln(") do")
+        raise_indent()
 
         scopes:push({
             type = "loop",
             id = id,
             depth = depth
         })
-
         local body = evaluate(ast[3 + offset])
-
         scopes:pop()
 
-        local parent_block = get_parent_block()
-
-        local text = "local __h_loop_" .. id .. " = true"
-        text = newline(text)
-        text = text .. "while __h_loop_" .. id .. " and (" .. cond.text .. ") do"
-        text = new_indent(text)
-        text = text .. body.text
-        text = newline(text)
-        text = check_return(text, parent_block)
-        text = end_indent(text)
-        text = text .. "end"
-
-        return {
-            text = text,
-            h_type = "void",
-        }
+        emitln(body.text)
+        check_return(parent_block)
+        lower_indent()
+        emitln("end")
+        return void
     end,
     if_expr = function (ast)
+        local op = steal_output()
+        
+        emitln("(function()")
+        raise_indent()
+
+        emit("if ")
         local cond = evaluate(ast[2])
+        emit(cond.text)
+        emitln(" then")
+        raise_indent()
+
         local offset = ternary(ast[3] == ",", 1, 0)
 
         scopes:push({
@@ -1103,41 +757,34 @@ local ast_traverse = {
             depth = depth
         })
 
+        if ast[3 + offset].rule == "expr" then
+            emit("return ")
+        end
+
         local if_true = evaluate(ast[3 + offset])
         assert_type(cond.h_type, "bool")
-        local text = "(function()"
-        text = new_indent(text)
-        text = text .. "if " .. cond.text .. " then"
-        text = new_indent(text)
-        if ast[3 + offset].rule == "expr" then
-            text = text .. "return " .. if_true.text
-        else 
-            text = text .. if_true.text
-        end
-        text = end_indent(text)
+        emitln(if_true.text)
+
+        lower_indent()
         if ast[5 + offset] then
+            emitln("else")
+            raise_indent()
             local if_false = evaluate(ast[5 + offset])
-            text = text .. "else"
-            text = new_indent(text)
             if ast[5 + offset].rule == "expr" then
-                text = text .. "return " .. if_false.text
-            else 
-                text = text .. if_false.text
+                emit("return ")
             end
-            text = end_indent(text)
+            emitln(if_false.text)
+            lower_indent()
         end
 
         scopes:pop()
-
         
-        text = text .. "end"
-        text = end_indent(text)
-        text = text .. "end)()"
-        text = newline(text)
+        emitln("end")
+        lower_indent()
+        emitln("end)()")
 
         local parent_block = get_parent_block()
-        text = check_return(text, parent_block)
-        text = newline(text)
+        check_return(parent_block)
         -- text = text .. "if __h_return_value_" .. depth .. " then"
         -- text = new_indent(text)
         -- text = text .. "local __h_temp = __h_return_value_" .. depth
@@ -1145,15 +792,26 @@ local ast_traverse = {
         -- text = text .. "return __h_temp"
         -- text = end_indent(text)
         -- text = text .. "end"
+        local text = steal_output()
+        return_output(op)
         return {
             text = text,
             h_type = "any"
         }
     end,
     func = function (ast)
-        local text = ""
+        local op = steal_output()
+
         local args = ast[2]
         local offset = -1
+
+        local is_penis_function = ast[4 + ternary(args ~= ")", 0, -1)] == ":"
+        if is_penis_function then
+            emit("function(self, ")
+        else 
+            emit("function(")
+        end
+
         local vararg_name
         if args ~= ")" then
             local i = 1
@@ -1164,16 +822,17 @@ local ast_traverse = {
                 vararg_name = ternary(is_vararg, name, nil)
                 -- show(arg)
                 -- show()
-                text = text .. ternary(is_vararg, "...", name .. ternary(args[i + 2], ", ", ""))
+                emit(ternary(is_vararg, "...", name .. ternary(args[i + 2], ", ", "")))
                 i = i + 2
             end
             offset = 0
+        elseif is_penis_function then
+            remove_comma()
         end
-        text = text .. ")"
-        text = new_indent(text)
+        emitln(")")
+        raise_indent()
         if vararg_name then
-            text = text .. "local " .. vararg_name .. " = { ... }"
-            text = newline(text)
+            emitln("local " .. vararg_name .. " = { ... }")
         end
         scopes:push({
             type = "func",
@@ -1183,14 +842,11 @@ local ast_traverse = {
         -- show(ast)
         if ast[4 + offset] == ":" then
             offset = offset + 1 
-            text = "function(self, " .. text
-        else 
-            text = "function(" .. text
         end
         -- show(5 + offset)
         local val = ast[5 + offset]
         if val == "." then
-            text = text .. "return nil"
+            emitln("return nil")
         else 
             -- print("spot: " .. (5 + offset))
             -- show(ast)
@@ -1198,18 +854,24 @@ local ast_traverse = {
                 error("Expected expression after '=>' in a function")
             end
 
-            text = text .. "return " .. evaluate(val).text
+            emitln("return " .. evaluate(val).text)
         end
         scopes:pop()
-        text = end_indent(text)
-        text = text .. "end"
+        lower_indent()
+        emitln("end")
+
+        local text = steal_output()
+        return_output(op)
+
         return {
             text = text,
             h_type = "func"
         }
     end,
     table = function (ast)
-        local text = "{ "
+        local op = steal_output()
+        emitln("{")
+        raise_indent()
         local items = ast[2]
         local i = 1
         while items[i] do
@@ -1218,10 +880,14 @@ local ast_traverse = {
             local name = item[1][1]
             local val = item[3]
             -- show()
-            text = text .. name .. " = " .. evaluate(val).text .. ", "
+            emitln(name .. " = " .. evaluate(val).text .. ", ")
             i = i + 2
         end
-        text = text .. "}"
+        remove_comma()
+        lower_indent()
+        emitln("}")
+        local text = steal_output()
+        return_output(op)
         return {
             text = text,
             h_type = "any"
@@ -1249,82 +915,42 @@ evaluate = function(ast)
     end
 end
 
--- -- res = simplify_ast(res)
--- -- print(res == nil)
--- -- show(res)
--- local result = evaluate(res)
--- -- print(inspect(result))
--- print("INPUT:")
--- local function trim(s)
---     return s:match "^%s*(.-)%s*$"
--- end
--- print(trim(code))
--- if result.text == nil then
---     error("Failed to parse")
--- end
-
--- local output = "dofile('h_include.lua')\n"
--- output = output .. result.text
-
--- print("OUTPUT:")
--- print(output)
-
--- local file = io.open("out.lua", "w")
--- io.output(file)
--- io.write(output)
--- io.close()
-
--- print("Lua result:")
 local function translate_stmt(str)
-    local ast, errors = pg.parse(str, grammar, printerror) 
+    local parsed = parse(str)
 
-    if errors then 
-        print("Encountered one or more syntax errors. Possible solutions:")
-        print(errtext)
+    if parsed.errors then 
+        error("Encountered one or more syntax errors. Possible solutions:\n" .. parsed.error_text)
         return
     end 
 
-    local result = evaluate(ast)
+    steal_output()
+    local result = evaluate(parsed.ast)
 
     if result == nil or result.text == nil then
         error("Failed to parse. Maybe it's a syntax error, or maybe I'm a bad programmer.")
     end
 
-    return result.text
+    return output
 end
 
 local function translate(str, include_entry)
-    local ast, errors = pg.parse(str, grammar, printerror) 
-
-    if errors then 
-        print("Encountered one or more syntax errors. Possible solutions:")
-        print(errtext)
-        return
-    end 
-
-    local result = evaluate(ast)
-
-    if result == nil or result.text == nil then
-        error("Failed to parse. Maybe it's a syntax error, or maybe I'm a bad programmer.")
-    end
+    local text = translate_stmt(str)
 
     if include_entry then
-        result.text = [[
+        text = [[
 require('h_include')
-]] .. result.text
+]] .. text
     end
 
-    result.text = [[
+    text = [[
 local __h_filename = arg[0]
 local __h_slash = string.find(__h_filename, "/[^/]*$") or string.find(__h_filename, "\\[^\\]*$") or 0
 local __h_current_dir = string.sub(__h_filename, 1, __h_slash - 1)
 package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
 package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
-]] .. result.text
+]] .. text
 
-
-
-    return result.text
+    return text
 end
 
 local function translate_file(path, include_entry)
@@ -1402,11 +1028,6 @@ local function compile_dir(dir, entry, out)
     if not out then out = "out" end
 
     compile_file(dir .. "/" .. entry, out, true, true)
-
-    local function string_startswith(s, start)
-        return string.sub(s,1,string.len(start)) == start
-    end
-
     -- in/a/b
     -- out/a/b
     local function equivalentOutDir(d)
@@ -1427,7 +1048,6 @@ local function compile_dir(dir, entry, out)
     print("Done.")
 end
 
-
 -- local lfs = require("lfs")
 
 return {
@@ -1436,6 +1056,10 @@ return {
     translate_file = translate_file,
     compile_file = compile_file,
     compile_dir = compile_dir,
-    evaluate_ast = evaluate,
+    evaluate_ast = function (ast)
+        steal_output()
+        evaluate(ast)
+        return output
+    end,
     version = HINA_VERSION
 }

@@ -20,3 +20,5 @@ function __h_unpack(x)
 end
 
 __h_return_value = nil
+
+object = require("classic")
