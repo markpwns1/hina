@@ -5,7 +5,7 @@
 -- -- local x = require("lpeglabel")
 require("util")
 
-local HINA_VERSION = "pre-0.2.0"
+local HINA_VERSION = "pre-0.3.0"
 
 require("emitter")
 
