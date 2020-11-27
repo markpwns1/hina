@@ -1,13 +1,24 @@
 # Hina
-A sane programming language that compiles to Lua
+A sane programming language that compiles to Lua. Hina is partially self-hosted, and on its way to being fully self-hosted. The language is currently in active development. Contributions welcome.
 
-### Features:
+### Features
 - Feature parity and interopability with Lua, with less verbose syntax
 - The `require` function will no longer fail depending on where your working directory is, and now searches for files relative to the file it is called in.
 - Advanced scope system with named scopes and the ability to return or break from multiple enclosing scopes
 - The `continue` keyword like in C-like languages
 - Try-catch blocks like in C-like languages
 - The operators `not`, `and`, and `or` can now be overridden with the functions `__not`, `__and`, and `__or` in a table.
+
+### Getting Started
+1. `git clone https://github.com/markpwns1/hina`
+2. `cd hina`
+3. `hinac -d "src" -e "main.hina" -o "output folder"` -- The arguments correspond to the following: 
+- `-d <project root folder>` -- Root folder of your project. All .hina files in this folder will be compiled.
+- `-e <entry point file>` -- The entry point of the program. Hina-specific headers and code will be appended to this file under the assumption that it will be the first thing that is run.
+- `-o <output folder>` -- The folder to output the compiled project to
+4. `lua "output folder/main.lua"`
+
+Or alternatively, once you've cloned the repo, try the REPL with `hina`.
 
 ### In-Depth
 Hina is an imperative, whitespace insensitive programming language, like Lua. Every statement *must* end with `;`.
@@ -178,7 +189,7 @@ try {
 };
 ```
 
-### Example 
+### Examples
 A calculator using the "parser-gen" Lua library.
 ```rust
 let pg = require("lib.parser-gen.parser-gen");
@@ -229,4 +240,30 @@ eval_table = {
 evaluate = (ast) => eval_table[ast.rule](ast);
 
 print(input .. " = " .. evaluate(parsed));
+```
+
+Hina is partially self-hosted. Here is the source code for the REPL:
+```rust
+let hina = require("hina");
+
+let running = true;
+
+quit = () => {
+    running = false;
+};
+
+print("Hina " .. hina.version .. " -- REPL");
+print("Call quit(); to exit");
+
+while running {
+    io.write(">>> ");
+    let input = io.read();
+
+    try {
+        let translated = hina.translate_stmt(input);
+        let module = load(translated);
+        print(try module() else with err, err);
+    }
+    else with err, print(string_trim(err));
+};
 ```
