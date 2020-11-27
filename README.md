@@ -12,13 +12,16 @@ A sane programming language that compiles to Lua. Hina is partially self-hosted,
 ### Getting Started
 1. `git clone https://github.com/markpwns1/hina`
 2. `cd hina`
-3. `hinac -d "src" -e "main.hina" -o "output folder"` -- The arguments correspond to the following: 
+3. Edit `config.bat` as necessary.
+4. `hinac -d "src" -e "main.hina" -o "output folder"` -- The arguments correspond to the following: 
 - `-d <project root folder>` -- Root folder of your project. All .hina files in this folder will be compiled.
 - `-e <entry point file>` -- The entry point of the program. Hina-specific headers and code will be appended to this file under the assumption that it will be the first thing that is run.
 - `-o <output folder>` -- The folder to output the compiled project to
-4. `lua "output folder/main.lua"`
+5. `lua "output folder/main.lua"`
 
 Or alternatively, once you've cloned the repo, try the REPL with `hina`.
+
+Note that the Hina compiler only works with 64-bit Lua and not with LuaJIT. Code written using Hina is compatible with Lua 5.1 and newer, and also LuaJIT.
 
 ### In-Depth
 Hina is an imperative, whitespace insensitive programming language, like Lua. Every statement *must* end with `;`.
