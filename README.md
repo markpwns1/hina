@@ -3,9 +3,10 @@ A sane programming language that compiles to Lua
 
 ### Features:
 - Feature parity and interopability with Lua, with less verbose syntax
-- The `require` function will no longer fail depending on where your working directory is
+- The `require` function will no longer fail depending on where your working directory is, and now searches for files relative to the file it is called in.
 - Advanced scope system with named scopes and the ability to return or break from multiple enclosing scopes
-- The `continue` keyword like in C#, Java, C, etc...
+- The `continue` keyword like in C-like languages
+- Try-catch blocks like in C-like languages
 - The operators `not`, `and`, and `or` can now be overridden with the functions `__not`, `__and`, and `__or` in a table.
 
 ### In-Depth
@@ -114,6 +115,30 @@ for i, v in ipairs(x), print(v);
 from 1 -> 10 by 1 with i, print(i);
 ```
 
+#### Arrays
+An array can be declared like the following:
+```rust
+let a = [ 1, 2, 3 ];
+```
+This is just syntactic sugar for a Lua table containing `1, 2, 3`, and as such Lua's `table` library can be used to manipulate them. Arrays and tables are 1-indexed like in Lua.
+
+#### Tables
+A table can be declared like this:
+```rust
+let vec = {
+    x: 1,
+    y: 2 + 3
+};
+```
+They are equivalent to Lua tables.
+
+#### Operators
+Some operators are changed from Lua. 
+- `and` -> `&&`
+- `or` -> `||`
+- `not` -> `!`
+All three of these can be overridden with `__not`, `__or`, `__and` inside a table, like other operators can.
+
 #### Classes
 Hina does not provide any syntactic sugar for classes. It does, however, export the variable `object` from the "Classic" library, which provides a simple abstraction over the metatable stuff that Lua requires in order to emulate classes. See the following file, `vec.hina`:
 ```rust
@@ -134,6 +159,22 @@ vec.__tostring = () :=> "(" .. self.x .. ", " .. self.y .. ")";
 let vec = require("vec");
 let v = vec(1, 2);
 print(v); // prints (1, 2)
+```
+
+#### Try-else-with Block
+This is Hina's version of a try-catch block in C-like languages. It is both a statement and an expression.
+```rust
+let x = try y() else 5; // Will be 5 if y is not a function
+
+// Will print the error if y is not a function
+print(try y() else with err, err);
+
+// Standard usage like in other languages
+try {
+    A();
+} else with err {
+    B(err);
+};
 ```
 
 ### Example 
