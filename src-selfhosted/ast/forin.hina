@@ -1,0 +1,32 @@
+=> (ast) => {
+    let collection = capture(() => evaluate(ast[4]).text);
+    let id = get_scope_nest();
+
+    scopes:push({
+        type: "loop",
+        id: id,
+        depth: depth
+    });
+
+    let body = capture(() => evaluate(if ast[5] == ",", ast[6] else ast[5]).text);
+
+    scopes:pop();
+
+    let parent_block = get_parent_block();
+
+    emitln("local __h_loop_" .. id .. " = true");
+    emit("for ");
+
+    parse_field_list(ast[2], (x) => emit(x[1] .. ", "));
+    remove_comma();
+    
+    emit(" in " .. collection .. " do");
+    raise_indent();
+    emitln("if not __h_loop_" .. id .. " then break end");
+    emitln(body);
+    check_return(parent_block);
+    lower_indent();
+    emitln("end");
+
+    => void;
+};

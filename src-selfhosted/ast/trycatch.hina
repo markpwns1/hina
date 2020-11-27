@@ -1,0 +1,67 @@
+=> (ast) => {
+    let op = steal_output();
+
+    let id = get_scope_nest(); 
+
+    emitln("(function()");
+    raise_indent();
+    emitln("local __h_succ_" .. id .. ", __h_res_" .. id .. " = pcall(function ()");
+    raise_indent();
+
+    if ast[2].rule == "expr", emit("return ");
+
+    scopes:push({
+        type: "try",
+        id: id,
+        depth: depth
+    });
+
+    emitln(evaluate(ast[2]).text);
+
+    scopes:pop();
+
+    lower_indent();
+    emitln("end)");
+
+    emit("if __h_succ_" .. id .. " then return __h_res_" .. id .. " ");
+
+    if ast[3] == "else" {
+        emitln("else");
+        raise_indent();
+
+        let offset = 0;
+        if ast[4] == "with" {
+            emitln("local " .. ast[5][1] .. " = __h_res_" .. id);
+            offset = offset + 2;
+        };
+
+        emit("return ");
+
+        scopes:push({
+            type: "catch",
+            id: id,
+            depth: depth
+        });
+
+        if ast[4 + offset] == ",", {
+            offset = offset + 1;
+        };
+
+        emitln(evaluate(ast[4 + offset]).text);
+
+        scopes:pop();
+        lower_indent();
+    };
+
+    emitln("end");
+    lower_indent();
+    emitln("end)()");
+
+    let text = steal_output();
+    return_output(op);
+
+    => {
+        text: text,
+        h_type: "any"
+    };
+};

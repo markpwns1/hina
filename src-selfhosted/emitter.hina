@@ -1,0 +1,53 @@
+output = "";
+
+let indent = 0;
+
+emit = (txt) => {
+    txt = txt || "";
+    output = output .. txt;
+};
+
+newline = () => {
+    emit("
+
+");
+    from 1 -> indent, emit("  ");
+};
+
+raise_indent = () => {
+    indent = indent + 1;
+    emit("  ");
+};
+
+lower_indent = () => {
+    indent = indent - 1;
+    output = string_trim(output);
+    newline();
+};
+
+emitln = (txt) => {
+    emit(txt);
+    newline();
+};
+
+remove_comma = () => {
+    output = output:sub(1, output:len() - 2);
+};
+
+steal_output = () => {
+    let past_output = output;
+    output = "";
+    => past_output;
+};
+
+return_output = (o) => {
+    output = o;
+};
+
+capture = (f) => {
+    let op = steal_output();
+    let result = f();
+    let text = steal_output();
+    return_output(op);
+    => text .. result;
+};

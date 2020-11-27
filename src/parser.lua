@@ -34,7 +34,8 @@ local error_labels = {
     missingFrom = "Missing 'from'",
     missingBy = "Missing 'by",
     missingWith = "Missing 'with'",
-    missingSemicolon = "Missing ';'"
+    missingSemicolon = "Missing ';'",
+    errorEscSeq = "Invalid escape sequence"
 };
 
 pg.setlabels(error_labels);
@@ -94,7 +95,7 @@ local grammar = pg.compile([[
     selfcall <- ':' IDENTIFIER call
     index_call <- factor (index / call / traverse / selfcall)*
 
-    KEYWORDS <- 'break' / 'continue' / 'from' / 'by' / 'with' / 'while' / 'let' / 'return' / 'fn' / 'if' / 'else'
+    KEYWORDS <- 'try' / 'break' / 'continue' / 'from' / 'by' / 'with' / 'while' / 'let' / 'return' / 'fn' / 'if' / 'else'
     IDREST <- [a-zA-Z_0-9]
     RESERVED <- KEYWORDS !IDREST
     IDENTIFIER <- !RESERVED [a-zA-Z_] [a-zA-Z0-9_]*
@@ -102,7 +103,12 @@ local grammar = pg.compile([[
     NUMBER <- [0-9]+ ('.' [0-9]+)?
     boolean <- 'true' / 'false'
     brackets <- '(' expr ')'
-    STRING <- '"' { [^"\]* } '"'
+
+    ESC		<-	'\' [abfnrtvz"'\] /
+					'\' %nl /
+					'\' %{errorEscSeq} 
+    STRING <- '"' { (ESC / [^"\])* } '"'
+
     array <- '[' field_list? ']'
     table <- '{' table_values? '}'
     func <- '(' arg_list? ')' ':'? '=>' (expr / tuple / '.')
@@ -111,9 +117,11 @@ local grammar = pg.compile([[
     block_name <- '<' IDREST '>'
     block <- block_name? '{' program '}'
     fragment comma <- ','?
-    if_expr <- 'if' expr comma (expr / stmt) ('else' (expr / stmt))?
 
-    factor <- if_expr / func / brackets / NUMBER / boolean / null / IDENTIFIER / STRING / array / block / table
+    if_expr <- 'if' expr comma (expr / stmt) ('else' (expr / stmt))?
+    try_catch_expr <- 'try' expr ('else' ('with' IDENTIFIER comma)? expr)?
+
+    factor <- try_catch_expr / if_expr / func / brackets / NUMBER / boolean / null / IDENTIFIER / STRING / array / block / table
 
     ident_list <- IDENTIFIER (',' IDENTIFIER)*
     assign_list <- index_call (',' index_call)*

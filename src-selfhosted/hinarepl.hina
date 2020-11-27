@@ -1,0 +1,22 @@
+let hina = require("hina");
+
+let running = true;
+
+quit = () => {
+    running = false;
+};
+
+print("Hina " .. hina.version .. " -- REPL");
+print("Call quit(); to exit");
+
+while running {
+    io.write(">>> ");
+    let input = io.read();
+
+    try {
+        let translated = hina.translate_stmt(input);
+        let module = load(translated);
+        print(try module() else with err, err);
+    }
+    else with err, print(string_trim(err));
+};

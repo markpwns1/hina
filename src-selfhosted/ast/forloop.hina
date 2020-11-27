@@ -32,7 +32,9 @@
         depth: depth
     });
 
+    raise_indent();
     let body = capture(() => evaluate(ast[5 + offset]).text);
+    lower_indent();
 
     scopes:pop();
 
@@ -42,9 +44,11 @@
     emit("for " .. (var_name || "_") .. " = " .. _from .. ", " .. _to);
     if _by, emit(", " .. _by);
     emitln(" do");
+    raise_indent();
     emitln("if not __h_loop_" .. id .. " then break end");
-    emitln(body);
+    emit(body);
     check_return(parent_block);
+    lower_indent();
     emitln("end");
 
     => void;

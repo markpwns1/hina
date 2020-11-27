@@ -1,0 +1,15 @@
+let hina = require("hina");
+let argparse = require("lib.argparse");
+
+let parser = argparse("hinac", "Compile Hina code to Lua code.");
+parser:option("-d --directory", "The directory to be compiled"):args(1);
+parser:option("-e --entry", "The entry point of the Hina program"):args(1):default("main.hina");
+parser:option("-o --output", "The folder in which to write the compiled Lua files"):args(1):default("out");
+parser:option("-m --min", "Does not copy any of the required header files for Hina programs"):args(0);
+
+let args = parser:parse();
+
+if args.directory, 
+    hina.compile_dir(args.directory, args.entry, args.output);
+else 
+    hina.compile_file(args.entry, args.output, not args.min, true);

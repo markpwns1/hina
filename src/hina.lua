@@ -37,7 +37,7 @@ end
 
 function assert_type(a, b)
     if not type_compatible(a, b) then
-        error("Expected object of type " .. b .. " but got " .. a)
+        error("Expected object of type " .. inspect(b) .. " but got " .. inspect(a))
     end
 end
 
@@ -136,7 +136,7 @@ local function generate_factor(type, i)
     end
 end
 
-local function parse_field_list(list, f, start)
+function parse_field_list(list, f, start)
     if not start then start = 1 end
     local i = start
     while list[i] do
@@ -688,42 +688,44 @@ local ast_traverse = {
 
         return void
     end,]]
-    for_loop = require("ast.lua.forloop"),
-    for_in_loop = function (ast)
-        local collection = evaluate(ast[4])
+    for_loop = require("ast.forloop"),
+    for_in_loop = require("ast.forin"),
+    try_catch_expr = require("ast.trycatch"),
+    -- for_in_loop = function (ast)
+    --     local collection = evaluate(ast[4])
         
-        local id = get_scope_nest() 
-        scopes:push({
-            type = "loop",
-            id = id,
-            depth = depth
-        })
+    --     local id = get_scope_nest() 
+    --     scopes:push({
+    --         type = "loop",
+    --         id = id,
+    --         depth = depth
+    --     })
 
-        local body = evaluate(ternary(ast[5] == ",", ast[6], ast[5]))
+    --     local body = evaluate(ternary(ast[5] == ",", ast[6], ast[5]))
 
-        scopes:pop()
+    --     scopes:pop()
         
-        local parent_block = get_parent_block()
+    --     local parent_block = get_parent_block()
 
-        emitln("local __h_loop_" .. id .. " = true")
-        emit("for ")
+    --     emitln("local __h_loop_" .. id .. " = true")
+    --     emit("for ")
 
-        parse_field_list(ast[2], function (x)
-            emit(x[1] .. ", ")
-        end)
+    --     parse_field_list(ast[2], function (x)
+    --         emit(x[1] .. ", ")
+    --     end)
 
-        remove_comma()
+    --     remove_comma()
         
-        emit(" in " .. collection.text .. " do")
-        raise_indent()
-        emitln("if not __h_loop_" .. id .. " then break end")
-        emitln(body.text)
-        check_return(parent_block)
-        lower_indent()
-        emitln("end")
+    --     emit(" in " .. collection.text .. " do")
+    --     raise_indent()
+    --     emitln("if not __h_loop_" .. id .. " then break end")
+    --     emitln(body.text)
+    --     check_return(parent_block)
+    --     lower_indent()
+    --     emitln("end")
 
-        return void
-    end,
+    --     return void
+    -- end,
     while_loop = function (ast)
 
         local offset = ternary(ast[3] == ",", 1, 0)
@@ -775,7 +777,6 @@ local ast_traverse = {
         if ast[3 + offset].rule == "expr" then
             emit("return ")
         end
-        print(ast[3 + offset].rule)
 
         local if_true = evaluate(ast[3 + offset])
         assert_type(cond.h_type, "bool")
@@ -1046,7 +1047,6 @@ local function compile_dir(dir, entry, out)
     if not entry then entry = "main.hina" end
     if not out then out = "out" end
 
-    compile_file(dir .. "/" .. entry, out, true, true)
     -- in/a/b
     -- out/a/b
     local function equivalentOutDir(d)
@@ -1056,6 +1056,8 @@ local function compile_dir(dir, entry, out)
             -- return 
         -- end
     end
+
+    compile_file(dir .. "/" .. entry, get_folder(equivalentOutDir(dir .. "/" .. entry)), true, true)
 
     recursive_scan(dir, function (d) end,
     function (f)

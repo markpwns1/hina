@@ -60,10 +60,12 @@ do return function(ast)
       depth = depth,
     }
     );
+    raise_indent();
     local body = capture(function()
       return evaluate(ast[(5 + offset)]).text
     end
     );
+    lower_indent();
     scopes:pop();
     local parent_block = get_parent_block();
     emitln((([[__h_loop_]] .. id) .. [[ = true]]));
@@ -74,9 +76,11 @@ do return function(ast)
       end
     end)();
     emitln([[ do]]);
+    raise_indent();
     emitln((([[if not __h_loop_]] .. id) .. [[ then break end]]));
-    emitln(body);
+    emit(body);
     check_return(parent_block);
+    lower_indent();
     emitln([[end]]);
     do return void end
     ;

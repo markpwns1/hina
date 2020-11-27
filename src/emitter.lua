@@ -1,53 +1,94 @@
-output = ""
-
-local indent = 0
-
-function emit(txt)
-    txt = txt or ""
-    output = output .. txt
+local function __h_dir(file)
+    local slash = string.find(file, "/[^/]*$") or string.find(file, "\\[^\\]*$") or 0
+    return string.sub(file, 1, slash - 1)
 end
+local __h_filename = __h_dir(arg[0]) .. "/" .. string.gsub(... or "dummy", "%.", "/")
+local __h_current_dir = __h_dir(__h_filename)
+package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
+package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
+output = [[]];
+local indent = 0;
+emit = function(txt)
+  return (function()
+    txt = __h_or(txt, [[]]);
+    output = (output .. txt);
+    -- Depth: 1
+  end)()
+end
+;
+newline = function()
+  return (function()
+    emit([[
 
-local function newline()
-    emit("\n")
+]]);
+    __h_loop_2 = true
     for _ = 1, indent do
-        emit("  ")
+      if not __h_loop_2 then break end
+      emit([[  ]])
     end
+    ;
+    -- Depth: 1
+  end)()
 end
-
-function raise_indent()
-    indent = indent + 1
-    emit("  ")
+;
+raise_indent = function()
+  return (function()
+    indent = (indent + 1);
+    emit([[  ]]);
+    -- Depth: 1
+  end)()
 end
-
-function lower_indent()
-    indent = indent - 1
-    output = string_trim(output)
-    newline()
+;
+lower_indent = function()
+  return (function()
+    indent = (indent - 1);
+    output = string_trim(output);
+    newline();
+    -- Depth: 1
+  end)()
 end
-
-function emitln(txt)
-    emit(txt)
-    newline()
+;
+emitln = function(txt)
+  return (function()
+    emit(txt);
+    newline();
+    -- Depth: 1
+  end)()
 end
-
-function remove_comma()
-    output = output:sub(1, output:len() - 2) 
+;
+remove_comma = function()
+  return (function()
+    output = output:sub(1, (output:len() - 2));
+    -- Depth: 1
+  end)()
 end
-
-function steal_output()
-    local past_output = output
-    output = ""
-    return past_output
+;
+steal_output = function()
+  return (function()
+    local past_output = output;
+    output = [[]];
+    do return past_output end
+    ;
+    -- Depth: 1
+  end)()
 end
-
-function return_output(o)
-    output = o
+;
+return_output = function(o)
+  return (function()
+    output = o;
+    -- Depth: 1
+  end)()
 end
-
-function capture(f)
-    local op = steal_output()
-    local result = f()
-    local text = steal_output()
-    return_output(op)
-    return text .. result
+;
+capture = function(f)
+  return (function()
+    local op = steal_output();
+    local result = f();
+    local text = steal_output();
+    return_output(op);
+    do return (text .. result) end
+    ;
+    -- Depth: 1
+  end)()
 end
+;
