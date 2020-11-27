@@ -1,15 +1,30 @@
 # Hina
-A sane programming language that compiles to Lua
+A sane programming language that compiles to Lua. Hina is partially self-hosted, and on its way to being fully self-hosted. The language is currently in active development. Contributions welcome.
 
-### Features:
+### Features
 - Feature parity and interopability with Lua, with less verbose syntax
-- The `require` function will no longer fail depending on where your working directory is
+- The `require` function will no longer fail depending on where your working directory is, and now searches for files relative to the file it is called in.
 - Advanced scope system with named scopes and the ability to return or break from multiple enclosing scopes
-- The `continue` keyword like in C#, Java, C, etc...
+- The `continue` keyword like in C-like languages
+- Try-catch blocks like in C-like languages
 - The operators `not`, `and`, and `or` can now be overridden with the functions `__not`, `__and`, and `__or` in a table.
 
+### Getting Started
+1. `git clone https://github.com/markpwns1/hina`
+2. `cd hina`
+3. Edit `config.bat` as necessary.
+4. `hinac -d "src" -e "main.hina" -o "output folder"` -- The arguments correspond to the following: 
+- `-d <project root folder>` -- Root folder of your project. All .hina files in this folder will be compiled.
+- `-e <entry point file>` -- The entry point of the program. Hina-specific headers and code will be appended to this file under the assumption that it will be the first thing that is run.
+- `-o <output folder>` -- The folder to output the compiled project to
+5. `lua "output folder/main.lua"`
+
+Or alternatively, once you've cloned the repo, try the REPL with `hina`.
+
+Note that the Hina compiler only works with 64-bit Lua and not with LuaJIT. Code written using Hina is compatible with Lua 5.1 and newer, and also LuaJIT.
+
 ### In-Depth
-Hina is an imperative, whitespace insensitive programming language, like Lua. Every statement *must* end with `;`.
+Hina is an imperative, whitespace insensitive programming language, like Lua. Every statement **must** end with a semicolon, including control flow operations such as `if`, `while`, etc... This makes it different to C-like languages in this regard.
 
 #### Scopes
 Scopes in Hina are themselves an expression, and can return a value.
@@ -114,6 +129,31 @@ for i, v in ipairs(x), print(v);
 from 1 -> 10 by 1 with i, print(i);
 ```
 
+#### Arrays
+An array can be declared like the following:
+```rust
+let a = [ 1, 2, 3 ];
+```
+This is just syntactic sugar for a Lua table containing `1, 2, 3`, and as such Lua's `table` library can be used to manipulate them. Arrays and tables are 1-indexed like in Lua.
+
+#### Tables
+A table can be declared like this:
+```rust
+let vec = {
+    x: 1,
+    y: 2 + 3
+};
+```
+They are equivalent to Lua tables.
+
+#### Operators
+Some operators are changed from Lua. 
+- `and` -> `&&`
+- `or` -> `||`
+- `not` -> `!`
+
+All three of these can be overridden with `__not`, `__or`, `__and` inside a table, like other operators can.
+
 #### Classes
 Hina does not provide any syntactic sugar for classes. It does, however, export the variable `object` from the "Classic" library, which provides a simple abstraction over the metatable stuff that Lua requires in order to emulate classes. See the following file, `vec.hina`:
 ```rust
@@ -136,7 +176,23 @@ let v = vec(1, 2);
 print(v); // prints (1, 2)
 ```
 
-### Example 
+#### Try-else-with Block
+This is Hina's version of a try-catch block in C-like languages. It is both a statement and an expression.
+```rust
+let x = try y() else 5; // Will be 5 if y is not a function
+
+// Will print the error if y is not a function
+print(try y() else with err, err);
+
+// Standard usage like in other languages
+try {
+    A();
+} else with err {
+    B(err);
+};
+```
+
+### Examples
 A calculator using the "parser-gen" Lua library.
 ```rust
 let pg = require("lib.parser-gen.parser-gen");
@@ -187,4 +243,30 @@ eval_table = {
 evaluate = (ast) => eval_table[ast.rule](ast);
 
 print(input .. " = " .. evaluate(parsed));
+```
+
+Hina is partially self-hosted. Here is the source code for the REPL:
+```rust
+let hina = require("hina");
+
+let running = true;
+
+quit = () => {
+    running = false;
+};
+
+print("Hina " .. hina.version .. " -- REPL");
+print("Call quit(); to exit");
+
+while running {
+    io.write(">>> ");
+    let input = io.read();
+
+    try {
+        let translated = hina.translate_stmt(input);
+        let module = load(translated);
+        print(try module() else with err, err);
+    }
+    else with err, print(string_trim(err));
+};
 ```
