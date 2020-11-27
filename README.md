@@ -24,7 +24,7 @@ Or alternatively, once you've cloned the repo, try the REPL with `hina`.
 Note that the Hina compiler only works with 64-bit Lua and not with LuaJIT. Code written using Hina is compatible with Lua 5.1 and newer, and also LuaJIT.
 
 ### In-Depth
-Hina is an imperative, whitespace insensitive programming language, like Lua. Every statement *must* end with `;`.
+Hina is an imperative, whitespace insensitive programming language, like Lua. Every statement **must** end with a semicolon, including control flow operations such as `if`, `while`, etc... This makes it different to C-like languages in this regard.
 
 #### Scopes
 Scopes in Hina are themselves an expression, and can return a value.
