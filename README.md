@@ -137,6 +137,7 @@ Some operators are changed from Lua.
 - `and` -> `&&`
 - `or` -> `||`
 - `not` -> `!`
+
 All three of these can be overridden with `__not`, `__or`, `__and` inside a table, like other operators can.
 
 #### Classes
