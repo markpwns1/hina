@@ -5,9 +5,7 @@
 -- -- local x = require("lpeglabel")
 require("util")
 
-local HINA_VERSION = "pre-0.1.1"
-
-local pg = require("lib.parser-gen.parser-gen")
+local HINA_VERSION = "pre-0.2.0"
 
 require("emitter")
 
@@ -393,7 +391,6 @@ local ast_traverse = {
             local block_name = ast[1][2][1]
             local val = ternary(ast[3] == ".", "nil", nil)
             -- show(ast[3]);
-            val = val or evaluate(ast[3])
             local i = 0
             while i < scopes:len() do
                 local s = scopes:peek(i)
@@ -402,7 +399,9 @@ local ast_traverse = {
                 end
                 if s.type == "block" then 
                     table.insert(return_commands, s.name)
-                    emitln("__h_return_value_" .. s.name .. " = __h_pack(" .. ((val and val.text) or "nil") .. ")")
+                    emit("__h_return_value_" .. s.name .. " = __h_pack(") 
+                    val = val or evaluate(ast[3])
+                    emitln(ternary(val and val.text, val.text, "nil") .. ")")
 
                     if s.name == block_name then 
                         local parent = scopes:peek(i + 1)
@@ -432,7 +431,11 @@ local ast_traverse = {
             if ast[2] then
                 val = val or evaluate(ast[2])
             end
-            emitln("do return " .. ((val and val.text) or "nil") .. " end")
+
+            emit("do return ")
+            val = val or evaluate(ast[3])
+            emitln(ternary(val and val.text, val.text, "nil") .. " end")
+
             return void
         end
     end,
@@ -871,7 +874,8 @@ local ast_traverse = {
                 error("Expected expression after '=>' in a function")
             end
 
-            emitln("return " .. evaluate(val).text)
+            emit("return ")
+            emitln(evaluate(val).text)
         end
         scopes:pop()
         lower_indent()
@@ -1029,6 +1033,8 @@ local function compile_file(path, out, copy_h_include, include_entry)
     local lastIndexOfSlash = string.find(path, "/[^/]*$") or string.find(path, "\\[^\\]*$") or 0
     local lastIndexOfDot = string.find(path, ".[^.]*$") or (string.len(path) + 1)
     local filename = stringx.sub(path, lastIndexOfSlash + 1, lastIndexOfDot - 1)
+    io.output(io.stdout)
+    io.write("\"" .. path .. "\" -> \"" .. (out .. "/" .. filename .. ".lua") .. "\"")
     local text = translate_file(path, include_entry)
     os.execute("if not exist \"" .. out .. "\" mkdir \"" .. out .. "\"")
     local file = io.open(out .. "/" .. filename .. ".lua", "w")
@@ -1039,8 +1045,7 @@ local function compile_file(path, out, copy_h_include, include_entry)
     if copy_h_include then 
         os.execute("xcopy /y \"" .. get_folder(arg[0]) .. "/h_include\" \"" .. out .. "\" > nul")
     end
-
-    print("\"" .. path .. "\" -> \"" .. (out .. "/" .. filename .. ".lua") .. "\" successful.");
+    print(" successful.");
 end
 
 local function compile_dir(dir, entry, out)

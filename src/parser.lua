@@ -12,7 +12,7 @@ local error_labels = {
     missingTupleVal = "Missing one or more values",
     missingExpr = "Missing expression",
     missingReturns = "Missing one or more values to return",
-    missingNo = "Missing numeric value",
+    missingNo = "Missing numeric expression",
     missingThinArrow = "Missing '->'",
     missingLeftAssigments = "Missing one or more left-hand values to assign to",
     missingOpenSquare = "Missing '['",
@@ -29,13 +29,21 @@ local error_labels = {
     missingQuote = "Missing closing quote",
     missingLT = "Missing '<'",
     missingGT = "Missing '>'",
+    missingIn = "Missing 'in'",
     missingReturnKwd = "Missing keyword 'return'",
     missingColon = "Missing ':'",
     missingFrom = "Missing 'from'",
     missingBy = "Missing 'by",
     missingWith = "Missing 'with'",
     missingSemicolon = "Missing ';'",
-    errorEscSeq = "Invalid escape sequence"
+    missingRet = "Missing return statement",
+    errorEscSeq = "Invalid escape sequence",
+    missingBool = "Missing boolean expression",
+    missingRightHandOp = "Missing right-hand operand",
+    missingCall = "Missing function call",
+    missingFPart = "Missing fractional part of number",
+    missingLeftHandAssign = "Missing left hand of assignment",
+    missingTableVal = "Missing table value"
 };
 
 pg.setlabels(error_labels);
@@ -44,18 +52,18 @@ local grammar = pg.compile([[
     program <- (stmt ';'^missingSemicolon)+
     stmt <- (for_in_loop / for_loop / continue_stmt / break_stmt / while_loop / assignment / multi_ret / var_dec / ret / expr)
 
-    for_in_loop <- 'for' ident_list 'in' expr comma stmt
-    for_loop <- 'from' expr '->' expr ('by' expr)? ('with' IDENTIFIER)? comma stmt
+    for_in_loop <- 'for' ident_list^missingDecList 'in'^missingIn expr^missingExpr comma stmt^missingBody
+    for_loop <- 'from' expr^missingNo '->'^missingThinArrow expr^missingNo ('by' expr^missingNo)? ('with' IDENTIFIER^missingIdentifier)? comma stmt^missingBody
     continue_stmt <- 'continue' block_name?
     break_stmt <- 'break' block_name?
-    while_loop <- 'while' expr comma stmt
-    tuple <- '(' expr (',' expr)+ ')'
-    ret <- (block_name)? '=>' ((expr / tuple / '.')?)
-    multi_ret <- 'return' '[' ret (',' ret)* ']'
+    while_loop <- 'while' expr^missingBool comma stmt^missingBody
+    tuple <- '(' expr^missingExpr (',' expr^missingExpr)+ ')'^missingCloseBracket
+    ret <- (block_name)? '=>' (expr / tuple / '.')^missingReturns
+    multi_ret <- 'return' '[' ret^missingRet (',' ret^missingRet)* ']'^missingCloseSquare
     assignment <- assign_list '=' expr_list^missingRightHandVarDec
 
-    dec_list <- IDENTIFIER (',' IDENTIFIER)*
-    var_dec <- 'let' dec_list ('=' expr_list^missingRightHandVarDec)?
+    dec_list <- IDENTIFIER (',' IDENTIFIER^missingIdentifier)*
+    var_dec <- 'let' dec_list^missingDecList ('=' expr_list^missingRightHandVarDec)?
 
     expr <- concat
 
@@ -90,46 +98,46 @@ local grammar = pg.compile([[
     bin_not <- '~'* index_call
 
     traverse <- '.' IDENTIFIER
-    index <- '[' expr? ']'
-    call <- '(' expr_list? ')'
-    selfcall <- ':' IDENTIFIER call
+    index <- '[' expr? ']'^missingCloseSquare
+    call <- '(' expr_list? ')'^missingCloseBracket
+    selfcall <- ':' IDENTIFIER call^missingCall
     index_call <- factor (index / call / traverse / selfcall)*
 
-    KEYWORDS <- 'try' / 'break' / 'continue' / 'from' / 'by' / 'with' / 'while' / 'let' / 'return' / 'fn' / 'if' / 'else'
+    KEYWORDS <- 'in' / 'try' / 'break' / 'continue' / 'from' / 'by' / 'with' / 'while' / 'let' / 'return' / 'fn' / 'if' / 'else'
     IDREST <- [a-zA-Z_0-9]
     RESERVED <- KEYWORDS !IDREST
     IDENTIFIER <- !RESERVED [a-zA-Z_] [a-zA-Z0-9_]*
 
-    NUMBER <- [0-9]+ ('.' [0-9]+)?
+    NUMBER <- [0-9]+ ('.' ([0-9]+)^missingFPart)?
     boolean <- 'true' / 'false'
-    brackets <- '(' expr ')'
+    brackets <- '(' expr ')'^missingCloseBracket
 
     ESC		<-	'\' [abfnrtvz"'\] /
 					'\' %nl /
 					'\' %{errorEscSeq} 
     STRING <- '"' { (ESC / [^"\])* } '"'
 
-    array <- '[' field_list? ']'
-    table <- '{' table_values? '}'
-    func <- '(' arg_list? ')' ':'? '=>' (expr / tuple / '.')
+    array <- '[' field_list? ']'^missingCloseSquare
+    table <- '{' table_values? '}'^missingCloseCurly
+    func <- '(' arg_list? ')' ':'? '=>' (expr / tuple / '.')^missingReturn
     null <- 'nil'
 
     block_name <- '<' IDREST '>'
     block <- block_name? '{' program '}'
     fragment comma <- ','?
 
-    if_expr <- 'if' expr comma (expr / stmt) ('else' (expr / stmt))?
-    try_catch_expr <- 'try' expr ('else' ('with' IDENTIFIER comma)? expr)?
+    if_expr <- 'if' expr^missingCondition comma (expr / stmt)^missingBody ('else' (expr / stmt)^missingBody)?
+    try_catch_expr <- 'try' expr^missingBody ('else' ('with' IDENTIFIER^missingIdentifier comma)? expr^missingBody)?
 
     factor <- try_catch_expr / if_expr / func / brackets / NUMBER / boolean / null / IDENTIFIER / STRING / array / block / table
 
-    ident_list <- IDENTIFIER (',' IDENTIFIER)*
-    assign_list <- index_call (',' index_call)*
-    arg_list <- IDENTIFIER (',' IDENTIFIER !'...')* (',' IDENTIFIER '...')?
-    expr_list <- expr (',' expr)*
-    field_list <- expr (',' expr)* ','?
-    table_val <- IDENTIFIER ':' expr
-    table_values <- table_val (',' table_val)* ','?
+    ident_list <- IDENTIFIER (',' IDENTIFIER^missingIdentifier)*
+    assign_list <- index_call (',' index_call^missingLeftHandAssign)*
+    arg_list <- IDENTIFIER (',' IDENTIFIER^missingIdentifier !'...')* (',' IDENTIFIER^missingIdentifier '...')?
+    expr_list <- expr (',' expr^missingExpr)*
+    field_list <- expr (',' expr^missingExpr)* ','?
+    table_val <- IDENTIFIER ':' expr^missingExpr
+    table_values <- table_val (',' table_val^missingTableVal)* ','?
 
     fragment COMMENT <- '//' (. !%nl)* .
     fragment MULTILINE_COMMENT <- '/*' (. !'*/')* . '*/'
