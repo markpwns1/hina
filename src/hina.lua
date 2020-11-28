@@ -9,7 +9,7 @@ local HINA_VERSION = "pre-0.3.0"
 
 require("emitter")
 
-local Stack = require("stack")
+local Stack = require("lib.stack")
 local tablex = require("lib.tablex")
 local stringx = require("lib.stringx")
 local set = require("lib.set")
@@ -547,11 +547,18 @@ local ast_traverse = {
     number = generate_factor("num"),
     identifier = generate_factor("any"),
     boolean = generate_factor("bool"),
-    string = function(ast)
+    quotestring = function(ast)
         -- show(ast)
         return {
-            text = "[[" .. ast[2] .. "]]",
-            h_type = type
+            text = "\"" .. ast[2]:gsub("\n", "\\\n") .. "\"",
+            h_type = "string"
+        }
+    end,
+    bracketstring = function(ast)
+        -- show(ast)
+        return {
+            text = "[[" .. ast[2]:gsub("\\%$", "$") .. "]]",
+            h_type = "string"
         }
     end,
     null = function(ast)

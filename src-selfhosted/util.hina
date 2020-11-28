@@ -1,0 +1,12 @@
+inspect = require("lib.inspect");
+
+ternary = (cond, t, f) => if cond, t else f;
+
+show = (x) => print(inspect(x));
+
+string_trim = (s) => s:gsub("^%s*(.-)%s*$", "%1");
+
+string_startswith = (s, start) => s:sub(1, start:len()) == start;
+
+let err = error;
+error = (msg) => err("\n" .. msg);
