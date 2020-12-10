@@ -35,7 +35,7 @@
             offset = offset + 2;
         };
 
-        emit("return ");
+        emit("do return ");
 
         scopes:push({
             type: "catch",
@@ -47,7 +47,7 @@
             offset = offset + 1;
         };
 
-        emitln(evaluate(ast[4 + offset]).text);
+        emitln(evaluate(ast[4 + offset]).text .. " end");
 
         scopes:pop();
         lower_indent();

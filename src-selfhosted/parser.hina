@@ -154,12 +154,46 @@ let print_error = (desc, line, col, sfail, trec) => {
     
     error_text = error_text 
         .. error_count .. ". " 
-        .. desc .. " at '" .. string_trim(sfail) 
+        .. desc .. " before '" .. string_trim(sfail) 
         .. "' -- ln " .. line .. " col " .. col .. "\n";
+};
+
+optimise_ast_new = (ast) => {
+    let num_fluff = 0;
+    let num_tables = 0;
+    let operand_index;
+
+    for i in ipairs(ast),
+    if type(ast[i]) == "table" && ast[i].rule { 
+        operand_index = i;
+        num_tables = num_tables + 1;
+    } else {
+        num_fluff = num_fluff + 1;
+    };
+    
+    if num_fluff == 0 {
+        if num_tables == 1 { 
+            <1> => optimise_ast_new(ast[operand_index]);
+        } else if num_tables == 0 { 
+            <1> => ast;
+        } else if num_tables > 0 { 
+            for i in ipairs(ast),
+                ast[i] = optimise_ast_new(ast[i]);
+            
+            <1> => ast;
+        };
+    } else if num_fluff > 0 { 
+        for i in ipairs(ast),
+            ast[i] = optimise_ast_new(ast[i]);
+        
+        <1> => ast;
+    };   
 };
 
 let parse = (input, silent) => {
     let ast, errors = pg.parse(input, grammar, print_error);
+
+    // ast = optimise_ast(ast);
 
     => {
         ast: ast,

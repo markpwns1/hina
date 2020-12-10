@@ -1,0 +1,19 @@
+=> (ast) => {
+    parse_field_list(ast[1], (x) => {
+        let eva = evaluate(x);
+        if eva.ends_with_call,
+            error("Cannot assign directly to the result of a function");
+        
+        emit(eva.text .. ", ");
+    });
+    remove_comma();
+
+    emit(" = ");
+
+    parse_field_list(ast[3], (x) => 
+        emit(evaluate(x).text .. ", "));
+
+    remove_comma();
+
+    => void;
+};

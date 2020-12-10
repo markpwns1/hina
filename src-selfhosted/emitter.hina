@@ -8,15 +8,13 @@ emit = (txt) => {
 };
 
 newline = () => {
-    emit("
-
-");
-    from 1 -> indent, emit("  ");
+    emit("\n");
+    from 1 -> indent, emit("    ");
 };
 
 raise_indent = () => {
     indent = indent + 1;
-    emit("  ");
+    emit("    ");
 };
 
 lower_indent = () => {

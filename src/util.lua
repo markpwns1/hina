@@ -8,50 +8,42 @@ package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
 package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
 inspect = require("lib.inspect");
 ternary = function(cond, t, f)
-
-  return (function()
-
-    if cond then
-
-      return t
-
-    else
-
-      return f
-
+    do return 
+        (function()
+            if cond then
+                do return t
+                end
+            else
+                do return 
+                    f
+                end
+            end
+        end)()
     end
-
-  end)()
-
 end
-
 ;
 show = function(x)
-
-  return print(inspect(x))
-
+    do return 
+        print(inspect(x))
+    end
 end
-
 ;
 string_trim = function(s)
-
-  return s:gsub("^%s*(.-)%s*$", "%1")
-
+    do return 
+        s:gsub("^%s*(.-)%s*$", "%1")
+    end
 end
-
 ;
 string_startswith = function(s, start)
-
-  return (s:sub(1, start:len()) == start)
-
+    do return 
+        (s:sub(1, start:len()) == start)
+    end
 end
-
 ;
-local err = error;
+local err; err = error;
 error = function(msg)
-
-  return err(("\n" .. msg))
-
+    do return 
+        err(("\n" .. msg))
+    end
 end
-
 ;

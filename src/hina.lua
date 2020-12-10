@@ -205,51 +205,11 @@ end
 local unbox_ast = generate_unboxer(1)
 
 local ast_traverse = {
-    program = function(ast)
-        local pc = 1
-        while ast[pc] do
-            if ast[pc] ~= ";" then
-                emit(string_trim(evaluate(ast[pc]).text) .. ";\n")
-            end
-            pc = pc + 1
-        end
-        return void
-    end,
-    comment = function (ast) return void end,
-    stmt = function(ast)
-        -- if ast[1].rule == "expr" and ast[1][1] and ast[1][1] then
-        --     error("Expression used as statement")  
-        -- end
-        return unbox_ast(ast)
-    end,
-    assignment = function (ast)
-        parse_field_list(ast[1], function (x)
-            local eva = evaluate(x)
-            if eva.ends_with_call then
-                error("Cannot assign directly to the result of a function")
-            end
-            emit(eva.text .. ", ")
-        end)
-        remove_comma()
-
-        emit(" = ")
-
-        parse_field_list(ast[3], function (x)
-            emit(evaluate(x).text .. ", ")
-        end)
-        remove_comma()
-
-        return void
-    end,
-    tuple = function (ast)
-        -- show(ast)
-        local i = 2
-        while ast[i] do 
-            emit(evaluate(ast[i]).text .. ternary(ast[i + 2], ", ", ""))
-            i = i + 2
-        end
-        return void
-    end,
+    program = require("ast.program"),
+    comment = function () return void end,
+    stmt = unbox_ast,
+    assignment = require("ast.assignment"),
+    tuple = require("ast.tuple"),
     multi_ret = function (ast)
         local i = 3
 
@@ -432,9 +392,12 @@ local ast_traverse = {
                 val = val or evaluate(ast[2])
             end
 
-            emit("do return ")
+            emitln("do return ")
+            raise_indent()
             val = val or evaluate(ast[3])
-            emitln(ternary(val and val.text, val.text, "nil") .. " end")
+            emitln(ternary(val and val.text, val.text, "nil"))
+            lower_indent()
+            emitln("end")
 
             return void
         end
@@ -443,12 +406,22 @@ local ast_traverse = {
         -- show(ast)
         local names = ast[2]
         emit("local ")
-        local i = 1
-        while names[i] do
-            emit(names[i][1] .. ternary(names[i + 2], ", ", ""))
-            i = i + 2
+        do 
+            local i = 1
+            while names[i] do
+                emit(names[i][1] .. ternary(names[i + 2], ", ", ""))
+                i = i + 2
+            end
         end
         if ast[3] then
+            emit("; ")
+            do 
+                local i = 1
+                while names[i] do
+                    emit(names[i][1] .. ternary(names[i + 2], ", ", ""))
+                    i = i + 2
+                end
+            end
             emit(" = ")
             parse_field_list(ast[4], function (x)
                 emit(evaluate(x).text .. ", ")
@@ -531,7 +504,7 @@ local ast_traverse = {
                 text = text .. ")"
                 ends_with_call = true
             else
-                error("wtf")
+                error("wtf:\n" .. inspect(ast))
             end
             i = i + 1
         end
@@ -615,7 +588,7 @@ local ast_traverse = {
 
         while statements[pc] do
             emit(string_trim(evaluate(statements[pc]).text) .. ";")
-
+            
             check_return(block_name)
 
             if statements[pc + 1] then
@@ -639,132 +612,10 @@ local ast_traverse = {
             h_type = "any"
         }
     end,
-    --[[for_loop = function (ast)
-        local from = capture(function ()
-            local n = evaluate(ast[2])
-            assert_type(n.h_type, "num")
-            return n.text
-        end)
-
-        local to = capture(function ()
-            local n = evaluate(ast[4])
-            assert_type(n.h_type, "num")
-            return n.text
-        end)
-
-        local offset = 0
-        local by
-        if ast[5] == "by" then
-            by = capture(function () 
-                local n = evaluate(ast[6])
-                assert_type(n.h_type, "num")
-                return n.text
-            end)
-            offset = 2
-        end
-
-        local var_name
-        if ast[5 + offset] == "with" then
-            var_name = ast[6 + offset][1]
-            offset = offset + 2
-        end
-
-        offset = offset + ternary(ast[5 + offset] == ",", 1, 0)
-        local id = get_scope_nest() 
-
-        scopes:push({
-            type = "loop",
-            id = id,
-            depth = depth
-        })
-
-        local body = capture(function () return evaluate(ast[5 + offset]).text end)
-
-        scopes:pop()
-
-        local parent_block = get_parent_block()
-
-        emitln("__h_loop_" .. id .. " = true")
-        emit("for " .. ternary(var_name, var_name, "_") .. " = " .. from 
-            .. ", " .. to)
-        if by then
-            emit(", " .. by)
-        end
-        emitln(" do")
-        emitln("if not __h_loop_" .. id .. " then break end")
-        emitln(body)
-        check_return(parent_block)
-        emitln("end")
-
-        return void
-    end,]]
     for_loop = require("ast.forloop"),
     for_in_loop = require("ast.forin"),
     try_catch_expr = require("ast.trycatch"),
-    -- for_in_loop = function (ast)
-    --     local collection = evaluate(ast[4])
-        
-    --     local id = get_scope_nest() 
-    --     scopes:push({
-    --         type = "loop",
-    --         id = id,
-    --         depth = depth
-    --     })
-
-    --     local body = evaluate(ternary(ast[5] == ",", ast[6], ast[5]))
-
-    --     scopes:pop()
-        
-    --     local parent_block = get_parent_block()
-
-    --     emitln("local __h_loop_" .. id .. " = true")
-    --     emit("for ")
-
-    --     parse_field_list(ast[2], function (x)
-    --         emit(x[1] .. ", ")
-    --     end)
-
-    --     remove_comma()
-        
-    --     emit(" in " .. collection.text .. " do")
-    --     raise_indent()
-    --     emitln("if not __h_loop_" .. id .. " then break end")
-    --     emitln(body.text)
-    --     check_return(parent_block)
-    --     lower_indent()
-    --     emitln("end")
-
-    --     return void
-    -- end,
-    while_loop = function (ast)
-
-        local offset = ternary(ast[3] == ",", 1, 0)
-        local id = get_scope_nest() 
-
-        local parent_block = get_parent_block()
-
-        emitln("local __h_loop_" .. id .. " = true")
-        emit("while __h_loop_" .. id .. " and (")
-        local cond = evaluate(ast[2])
-        assert_type(cond.h_type, "bool")
-        emit(cond.text)
-        emitln(") do")
-        raise_indent()
-
-        scopes:push({
-            type = "loop",
-            id = id,
-            depth = depth
-        })
-        local body = evaluate(ast[3 + offset])
-        scopes:pop()
-
-        emitln(body.text)
-        check_return(parent_block)
-        lower_indent()
-        emitln("end")
-        return void
-    end,
+    while_loop = require("ast.while"),
     if_expr = function (ast)
         local op = steal_output()
         
@@ -785,12 +636,17 @@ local ast_traverse = {
         })
 
         if ast[3 + offset].rule == "expr" then
-            emit("return ")
+            emit("do return ")
         end
 
         local if_true = evaluate(ast[3 + offset])
         assert_type(cond.h_type, "bool")
         emitln(if_true.text)
+
+        if ast[3 + offset].rule == "expr" then 
+            emitln("end")
+        end
+        check_return()
 
         lower_indent()
         if ast[5 + offset] then
@@ -798,9 +654,15 @@ local ast_traverse = {
             raise_indent()
             local if_false = evaluate(ast[5 + offset])
             if ast[5 + offset].rule == "expr" then
-                emit("return ")
+                emitln("do return ")
+                raise_indent()
             end
             emitln(if_false.text)
+            if ast[5 + offset].rule == "expr" then
+                lower_indent()
+                emitln("end")
+            end
+            check_return()
             lower_indent()
         end
 
@@ -808,17 +670,15 @@ local ast_traverse = {
         
         emitln("end")
         lower_indent()
-        emitln("end)()")
 
         local parent_block = get_parent_block()
         check_return(parent_block)
-        -- text = text .. "if __h_return_value_" .. depth .. " then"
-        -- text = new_indent(text)
-        -- text = text .. "local __h_temp = __h_return_value_" .. depth
-        -- text = newline(text)
-        -- text = text .. "return __h_temp"
-        -- text = end_indent(text)
-        -- text = text .. "end"
+        if parent_block and parent_block.name then
+            print("PARENT BLOCK: " .. parent_block.name)
+        end
+
+        emitln("end)()")
+
         local text = steal_output()
         return_output(op)
         return {
@@ -873,7 +733,7 @@ local ast_traverse = {
         -- show(5 + offset)
         local val = ast[5 + offset]
         if val == "." then
-            emitln("return nil")
+            emitln("do return nil end")
         else 
             -- print("spot: " .. (5 + offset))
             -- show(ast)
@@ -881,8 +741,11 @@ local ast_traverse = {
                 error("Expected expression after '=>' in a function")
             end
 
-            emit("return ")
+            emitln("do return ")
+            raise_indent()
             emitln(evaluate(val).text)
+            lower_indent()
+            emitln("end")
         end
         scopes:pop()
         lower_indent()
@@ -896,32 +759,57 @@ local ast_traverse = {
             h_type = "func"
         }
     end,
-    table = function (ast)
-        local op = steal_output()
-        emitln("{")
-        raise_indent()
-        local items = ast[2]
-        local i = 1
-        while items[i] do
-            local item = items[i]
-            -- show(item)
-            local name = item[1][1]
-            local val = item[3]
-            -- show()
-            emitln(name .. " = " .. evaluate(val).text .. ", ")
-            i = i + 2
-        end
-        remove_comma()
-        lower_indent()
-        emitln("}")
-        local text = steal_output()
-        return_output(op)
-        return {
-            text = text,
-            h_type = "any"
-        }
-    end,
+    table = require("ast.table"),
 }
+
+--[[
+    {
+        {
+            {
+                1
+                r = minus 
+            }
+            {
+                2 
+                r = minus
+            }
+            r = plus 
+        }
+        r = prgrm
+    }
+]]
+
+local function optimise_ast(ast)
+    local num_fluff = 0
+    local num_tables = 0
+    local operand_index
+    for i, _ in ipairs(ast) do
+        if type(ast[i]) == "table" and ast[i].rule then 
+            operand_index = i
+            num_tables = num_tables + 1
+        else
+            num_fluff = num_fluff + 1
+        end
+    end
+
+    if num_fluff == 0 then
+        if num_tables == 1 then 
+            return optimise_ast(ast[operand_index])
+        elseif num_tables == 0 then 
+            return ast
+        elseif num_tables > 0 then 
+            for i, _ in ipairs(ast) do
+                ast[i] = optimise_ast(ast[i])
+            end
+            return ast
+        end
+    elseif num_fluff > 0 then 
+        for i, _ in ipairs(ast) do
+            ast[i] = optimise_ast(ast[i])
+        end
+        return ast
+    end
+end
 
 evaluate = function(ast)
     if not ast then
@@ -945,6 +833,10 @@ end
 
 local function translate_stmt(str)
     local parsed = parse(str)
+
+    -- show(optimise_ast(parsed.ast))
+    -- parsed.ast = optimise_ast_new(parsed.ast);
+    -- show(parsed.ast);
 
     if parsed.errors then 
         error("Encountered one or more syntax errors. Possible solutions:\n" .. parsed.error_text)
@@ -975,10 +867,12 @@ local function __h_dir(file)
     local slash = string.find(file, "/[^/]*$") or string.find(file, "\\[^\\]*$") or 0
     return string.sub(file, 1, slash - 1)
 end
-local __h_filename = __h_dir(arg[0]) .. "/" .. string.gsub(... or "dummy", "%.", "/")
-local __h_current_dir = __h_dir(__h_filename)
-package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
-package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
+if arg[0] then 
+    local __h_filename = __h_dir(arg[0]) .. "/" .. string.gsub(... or "dummy", "%.", "/")
+    local __h_current_dir = __h_dir(__h_filename)
+    package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
+    package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
+end
 ]] .. text
 
     return text

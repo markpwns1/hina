@@ -1,0 +1,12 @@
+=> (ast) => {
+    let pc = 1;
+
+    while ast[pc] {
+        if ast[pc] != ";", 
+            emit(string_trim(evaluate(ast[pc]).text) .. ";\n");
+        
+        pc = pc + 1;
+    };
+
+    => void;
+};

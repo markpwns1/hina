@@ -1,0 +1,28 @@
+=> (ast) => {
+    let op = steal_output();
+
+    emitln("{");
+    raise_indent();
+
+    let items = ast[2];
+    let i = 1;
+    while items[i] {
+        let item = items[i];
+        let name = item[1][1];
+        let val = item[3];
+        emitln(name .. " = " .. evaluate(val).text .. ", ");
+        i = i + 2;
+    };
+    remove_comma();
+
+    lower_indent();
+    emitln("}");
+
+    let text = steal_output();
+    return_output(op);
+
+    => {
+        text: text,
+        h_type: "any"
+    };
+};

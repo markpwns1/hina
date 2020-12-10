@@ -6,100 +6,55 @@ local __h_filename = __h_dir(arg[0]) .. "/" .. string.gsub(... or "dummy", "%.",
 local __h_current_dir = __h_dir(__h_filename)
 package.path = package.path .. ";" .. __h_current_dir .. "\\?.lua"
 package.cpath = package.cpath .. ";" .. __h_current_dir .. "\\?.dll"
-local pg = require("lib.parser-gen.parser-gen");
-local error_labels = {
-
-  missingCommaArray = "Missing comma to separate array values", 
-
-  missingRightHandVarDec = "Missing one or more values to assign", 
-
-  missingTableComma = "Missing comma to separate table values", 
-
-  missingCondition = "Missing a boolean condition", 
-
-  missingBody = "Missing body", 
-
-  missingIdentifier = "Missing an identifier (a name)", 
-
-  missingCommaGeneric = "Missing comma", 
-
-  missingDecList = "Missing one or more variable names", 
-
-  missingTupleVal = "Missing one or more values", 
-
-  missingExpr = "Missing expression", 
-
-  missingReturns = "Missing one or more values to return", 
-
-  missingNo = "Missing numeric expression", 
-
-  missingThinArrow = "Missing '->'", 
-
-  missingLeftAssigments = "Missing one or more left-hand values to assign to", 
-
-  missingOpenSquare = "Missing '['", 
-
-  missingCloseSquare = "Missing ']'", 
-
-  missingReturn = "Missing one or more return statements", 
-
-  missingEquals = "Missing '='", 
-
-  missingOpenBracket = "Missing '('", 
-
-  missingCloseBracket = "Missing ')'", 
-
-  missingOpenCurly = "Missing '{'", 
-
-  missingCloseCurly = "Missing '}'", 
-
-  missingFnArrow = "Missing '=>' to indicate function", 
-
-  missingRetArrow = "Missing '=>' to indicate a return", 
-
-  missingOperator = "Missing operator", 
-
-  missingQuote = "Missing closing quote", 
-
-  missingLT = "Missing '<'", 
-
-  missingGT = "Missing '>'", 
-
-  missingIn = "Missing 'in'", 
-
-  missingReturnKwd = "Missing keyword 'return'", 
-
-  missingColon = "Missing ':'", 
-
-  missingFrom = "Missing 'from'", 
-
-  missingBy = "Missing 'by", 
-
-  missingWith = "Missing 'with'", 
-
-  missingSemicolon = "Missing ';'", 
-
-  missingRet = "Missing return statement", 
-
-  errorEscSeq = "Invalid escape sequence", 
-
-  missingBool = "Missing boolean expression", 
-
-  missingRightHandOp = "Missing right-hand operand", 
-
-  missingCall = "Missing function call", 
-
-  missingFPart = "Missing fractional part of number", 
-
-  missingLeftHandAssign = "Missing left hand of assignment", 
-
-  missingTableVal = "Missing table value",
-
+local pg; pg = require("lib.parser-gen.parser-gen");
+local error_labels; error_labels = {
+    missingCommaArray = "Missing comma to separate array values", 
+    missingRightHandVarDec = "Missing one or more values to assign", 
+    missingTableComma = "Missing comma to separate table values", 
+    missingCondition = "Missing a boolean condition", 
+    missingBody = "Missing body", 
+    missingIdentifier = "Missing an identifier (a name)", 
+    missingCommaGeneric = "Missing comma", 
+    missingDecList = "Missing one or more variable names", 
+    missingTupleVal = "Missing one or more values", 
+    missingExpr = "Missing expression", 
+    missingReturns = "Missing one or more values to return", 
+    missingNo = "Missing numeric expression", 
+    missingThinArrow = "Missing '->'", 
+    missingLeftAssigments = "Missing one or more left-hand values to assign to", 
+    missingOpenSquare = "Missing '['", 
+    missingCloseSquare = "Missing ']'", 
+    missingReturn = "Missing one or more return statements", 
+    missingEquals = "Missing '='", 
+    missingOpenBracket = "Missing '('", 
+    missingCloseBracket = "Missing ')'", 
+    missingOpenCurly = "Missing '{'", 
+    missingCloseCurly = "Missing '}'", 
+    missingFnArrow = "Missing '=>' to indicate function", 
+    missingRetArrow = "Missing '=>' to indicate a return", 
+    missingOperator = "Missing operator", 
+    missingQuote = "Missing closing quote", 
+    missingLT = "Missing '<'", 
+    missingGT = "Missing '>'", 
+    missingIn = "Missing 'in'", 
+    missingReturnKwd = "Missing keyword 'return'", 
+    missingColon = "Missing ':'", 
+    missingFrom = "Missing 'from'", 
+    missingBy = "Missing 'by", 
+    missingWith = "Missing 'with'", 
+    missingSemicolon = "Missing ';'", 
+    missingRet = "Missing return statement", 
+    errorEscSeq = "Invalid escape sequence", 
+    missingBool = "Missing boolean expression", 
+    missingRightHandOp = "Missing right-hand operand", 
+    missingCall = "Missing function call", 
+    missingFPart = "Missing fractional part of number", 
+    missingLeftHandAssign = "Missing left hand of assignment", 
+    missingTableVal = "Missing table value",
 }
-
 ;
 pg.setlabels(error_labels);
-local grammar = pg.compile([[
+local grammar; grammar = pg.compile([[
     program <- (stmt ';'^missingSemicolon)+
     stmt <- (for_in_loop / for_loop / continue_stmt / break_stmt / while_loop / assignment / multi_ret / var_dec / ret / expr)
 
@@ -197,50 +152,207 @@ local grammar = pg.compile([[
     SYNC <- (!HELPER .)*
     SKIP <- %s / %nl / COMMENT / MULTILINE_COMMENT
 ]]);
-local error_count = 0;
-local error_text = "";
-local print_error = function(desc, line, col, sfail, trec)
-
-  return (function()
-
-    error_count = (error_count + 1);
-
-    error_text = ((((((((((error_text .. error_count) .. ". ") .. desc) .. " at '") .. string_trim(sfail)) .. "' -- ln ") .. line) .. " col ") .. col) .. "\n");
-
-    -- Depth: 1
-
-  end)()
-
+local error_count; error_count = 0;
+local error_text; error_text = "";
+local print_error; print_error = function(desc, line, col, sfail, trec)
+    do return 
+        (function()
+            error_count = (error_count + 1);
+            error_text = ((((((((((error_text .. error_count) .. ". ") .. desc) .. " before '") .. string_trim(sfail)) .. "' -- ln ") .. line) .. " col ") .. col) .. "\n");
+            -- Depth: 1
+        end)()
+    end
 end
-
 ;
-local parse = function(input, silent)
-
-  return (function()
-
-    local ast, errors = pg.parse(input, grammar, print_error);
-
-    do return {
-
-      ast = ast, 
-
-      errors = errors, 
-
-      error_text = error_text,
-
-    }
-
-     end
-
-    ;
-
-    -- Depth: 1
-
-  end)()
-
+optimise_ast_new = function(ast)
+    do return 
+        (function()
+            local num_fluff; num_fluff = 0;
+            local num_tables; num_tables = 0;
+            local operand_index;
+            local __h_loop_2 = true
+            for i in ipairs(ast) do    if not __h_loop_2 then break end
+                (function()
+                if __h_and((type(ast[i]) == "table"), ast[i].rule) then
+                    do return (function()
+                        operand_index = i;
+                        num_tables = (num_tables + 1);
+                        -- Depth: 2
+                    end)()
+                    
+                    end
+                else
+                    do return 
+                        (function()
+                        num_fluff = (num_fluff + 1);
+                        -- Depth: 2
+                    end)()
+                    end
+                end
+            end)()
+            end
+            ;
+            (function()
+                if (num_fluff == 0) then
+                    do return (function()
+                        (function()
+                            if (num_tables == 1) then
+                                do return (function()
+                                    __h_return_value_3 = __h_pack(optimise_ast_new(ast[operand_index]))
+                                    __h_return_value_2 = __h_pack(optimise_ast_new(ast[operand_index]))
+                                    __h_return_value_1 = __h_pack(optimise_ast_new(ast[operand_index]))
+                                    do return __h_unpack(__h_return_value_1) end
+                                    ;if __h_return_value_3 then
+                                        local __h_temp = __h_return_value_3
+                                        __h_return_value_3 = nil
+                                        return __h_unpack(__h_temp)
+                                    end
+                                    
+                                    -- Depth: 3
+                                end)()
+                                
+                                end
+                            else
+                                do return 
+                                    (function()
+                                    if (num_tables == 0) then
+                                        do return (function()
+                                            __h_return_value_3 = __h_pack(ast)
+                                            __h_return_value_2 = __h_pack(ast)
+                                            __h_return_value_1 = __h_pack(ast)
+                                            do return __h_unpack(__h_return_value_1) end
+                                            ;if __h_return_value_3 then
+                                                local __h_temp = __h_return_value_3
+                                                __h_return_value_3 = nil
+                                                return __h_unpack(__h_temp)
+                                            end
+                                            
+                                            -- Depth: 3
+                                        end)()
+                                        
+                                        end
+                                    else
+                                        do return 
+                                            (function()
+                                            if (num_tables > 0) then
+                                                do return (function()
+                                                    local __h_loop_8 = true
+                                                    for i in ipairs(ast) do    if not __h_loop_8 then break end
+                                                        ast[i] = optimise_ast_new(ast[i])
+                                                    end
+                                                    ;
+                                                    __h_return_value_3 = __h_pack(ast)
+                                                    __h_return_value_2 = __h_pack(ast)
+                                                    __h_return_value_1 = __h_pack(ast)
+                                                    do return __h_unpack(__h_return_value_1) end
+                                                    ;if __h_return_value_3 then
+                                                        local __h_temp = __h_return_value_3
+                                                        __h_return_value_3 = nil
+                                                        return __h_unpack(__h_temp)
+                                                    end
+                                                    
+                                                    -- Depth: 3
+                                                end)()
+                                                
+                                                end
+                                            end
+                                        if __h_return_value_2 then
+                                            local __h_temp = __h_return_value_2
+                                            __h_return_value_2 = nil
+                                            return __h_unpack(__h_temp)
+                                        end
+                                        end)()
+                                        end
+                                    end
+                                if __h_return_value_2 then
+                                    local __h_temp = __h_return_value_2
+                                    __h_return_value_2 = nil
+                                    return __h_unpack(__h_temp)
+                                end
+                                end)()
+                                end
+                            end
+                        if __h_return_value_2 then
+                            local __h_temp = __h_return_value_2
+                            __h_return_value_2 = nil
+                            return __h_unpack(__h_temp)
+                        end
+                        end)();
+                        -- Depth: 2
+                    end)()
+                    
+                    end
+                else
+                    do return 
+                        (function()
+                        if (num_fluff > 0) then
+                            do return (function()
+                                local __h_loop_5 = true
+                                for i in ipairs(ast) do    if not __h_loop_5 then break end
+                                    ast[i] = optimise_ast_new(ast[i])
+                                end
+                                ;
+                                __h_return_value_2 = __h_pack(ast)
+                                __h_return_value_1 = __h_pack(ast)
+                                do return __h_unpack(__h_return_value_1) end
+                                ;if __h_return_value_2 then
+                                    local __h_temp = __h_return_value_2
+                                    __h_return_value_2 = nil
+                                    return __h_unpack(__h_temp)
+                                end
+                                
+                                -- Depth: 2
+                            end)()
+                            
+                            end
+                        end
+                    if __h_return_value_1 then
+                        local __h_temp = __h_return_value_1
+                        __h_return_value_1 = nil
+                        return __h_unpack(__h_temp)
+                    end
+                    end)()
+                    end
+                end
+            if __h_return_value_1 then
+                local __h_temp = __h_return_value_1
+                __h_return_value_1 = nil
+                return __h_unpack(__h_temp)
+            end
+            end)();if __h_return_value_1 then
+                local __h_temp = __h_return_value_1
+                __h_return_value_1 = nil
+                return __h_unpack(__h_temp)
+            end
+            
+            -- Depth: 1
+        end)()
+    end
 end
-
 ;
-do return parse end
-
+local parse; parse = function(input, silent)
+    do return 
+        (function()
+            local ast, errors; ast, errors = pg.parse(input, grammar, print_error);if __h_return_value_1 then
+                local __h_temp = __h_return_value_1
+                __h_return_value_1 = nil
+                return __h_unpack(__h_temp)
+            end
+            
+            do return 
+                {
+                ast = ast, 
+                errors = errors, 
+                error_text = error_text,
+            }
+            end
+            ;
+            -- Depth: 1
+        end)()
+    end
+end
+;
+do return 
+    parse
+end
 ;

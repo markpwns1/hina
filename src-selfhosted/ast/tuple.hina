@@ -1,0 +1,8 @@
+=> (ast) => {
+    let i = 2;
+    while ast[i] { 
+        emit(evaluate(ast[i]).text .. (if ast[i + 2], ", " else ""));
+        i = i + 2;
+    };
+    => void;
+};

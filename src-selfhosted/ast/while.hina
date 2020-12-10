@@ -1,0 +1,30 @@
+=> (ast) => {
+    let offset = if ast[3] == ",", 1 else 0;
+    let id = get_scope_nest() ;
+
+    let parent_block = get_parent_block();
+
+    emitln("local __h_loop_" .. id .. " = true");
+    emit("while __h_loop_" .. id .. " and (");
+    let cond = evaluate(ast[2]);
+    assert_type(cond.h_type, "bool");
+    emit(cond.text);
+    emitln(") do");
+    raise_indent();
+
+    scopes:push({
+        type: "loop",
+        id: id,
+        depth: depth
+    });
+
+    let body = evaluate(ast[3 + offset]);
+    scopes:pop();
+
+    emitln(body.text);
+    check_return(parent_block);
+    lower_indent();
+    emitln("end");
+    
+    => void;
+};
